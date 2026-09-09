@@ -152,18 +152,18 @@ async function main() {
       for (let i = 0; i < 40; i++) { try { if ((await ev('document.readyState')) === 'complete') break; } catch (e) { } await sleep(200); }
       await sleep(1200);
       const x0 = (await ev('window.DEBUG.diag()')).player.x;
-      // 在左半屏按下并右拖, 模拟摇杆
-      await ev(`(()=>{const z=document.getElementById('joyZone');const r=document.getElementById('viewport').getBoundingClientRect();
-        const cx=r.left+(170/960)*r.width, cy=r.top+(360/640)*r.height;
-        z.dispatchEvent(new PointerEvent('pointerdown',{clientX:cx,clientY:cy,pointerId:9,pointerType:'touch',bubbles:true}));
-        const cx2=r.left+(330/960)*r.width, cy2=r.top+(330/640)*r.height;
-        z.dispatchEvent(new PointerEvent('pointermove',{clientX:cx2,clientY:cy2,pointerId:9,pointerType:'touch',bubbles:true}));})()`);
+      // 按住左下“右”方向键 → 角色右移
+      await ev(`(()=>{const b=document.querySelector('#movePad .fbtn[data-dir="right"]');b.dispatchEvent(new PointerEvent('pointerdown',{pointerId:9,pointerType:'touch',bubbles:true}));})()`);
       await sleep(800);
       const x1 = (await ev('window.DEBUG.diag()')).player.x;
-      await ev(`document.getElementById('joyZone').dispatchEvent(new PointerEvent('pointerup',{clientX:0,clientY:0,pointerId:9,pointerType:'touch',bubbles:true}));`);
-      check('浮动摇杆可拖动移动玩家', Math.abs(x1 - x0) > 30, 'dx=' + (x1 - x0));
-      const joyActive = await ev(`!!document.getElementById('joyBase').classList.contains('active')`);
-      check('松手后摇杆收起', joyActive === false, 'active=' + joyActive);
+      // 按住右下射击键可出泪
+      const t0 = (await ev('window.DEBUG.diag()')).stats.tears;
+      await ev(`(()=>{const b=document.querySelector('#firePad .fbtn[data-dir="right"]');b.dispatchEvent(new PointerEvent('pointerdown',{pointerId:8,pointerType:'touch',bubbles:true}));})()`);
+      await sleep(700);
+      const t1 = (await ev('window.DEBUG.diag()')).stats.tears;
+      await ev(`(()=>{document.querySelector('#movePad .fbtn[data-dir="right"]').dispatchEvent(new PointerEvent('pointerup',{pointerId:9,pointerType:'touch',bubbles:true}));document.querySelector('#firePad .fbtn[data-dir="right"]').dispatchEvent(new PointerEvent('pointerup',{pointerId:8,pointerType:'touch',bubbles:true}));})()`);
+      check('左下移动键可移动玩家', Math.abs(x1 - x0) > 30, 'dx=' + (x1 - x0));
+      check('右下射击键可攻击', t1 > t0, 'tears ' + t0 + '->' + t1);
     } else if (scenario === 'hp') {
       await sleep(1200);
       const redSum = await ev(`(()=>{let n=0;document.querySelectorAll('#hudHearts .hbox').forEach(c=>{const g=c.getContext('2d');const d=g.getImageData(0,0,c.width,c.height).data;for(let i=0;i<d.length;i+=4){if(d[i]>120&&d[i+1]<90&&d[i+2]<90)n++;}});return n;})()`);

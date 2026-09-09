@@ -262,68 +262,24 @@ let fpsAcc = 0, fpsN = 0, showFps = false;
 function enableTouch() {
   const tu = $('touchui');
   tu.classList.remove('hidden');
-  // ---- 浮动摇杆: 在左半边任意处按下即出现, 拖动即移动 ----
-  const joyBase = $('joyBase'), joyKnob = $('joyKnob');
-  const joyZone = $('joyZone');
-  let joyId = null, ox = 0, oy = 0, R = 54;
-  // 把屏幕坐标换算成视口内逻辑坐标(viewport 被 CSS 缩放)
-  const toVP = (clientX, clientY) => {
-    const r = viewport.getBoundingClientRect();
-    return {
-      x: (clientX - r.left) * (CFG.VIEW_W / r.width),
-      y: (clientY - r.top) * (CFG.VIEW_H / r.height),
-    };
-  };
-  function placeBase(vx, vy) {
-    const bw = joyBase.offsetWidth, bh = joyBase.offsetHeight;
-    joyBase.style.left = (vx - bw / 2) + 'px';
-    joyBase.style.top = (vy - bh / 2) + 'px';
-    joyBase.classList.add('active');
+  // 把一套十字键绑定到指定虚拟按键
+  function bindPad(root, map) {
+    root.querySelectorAll('.fbtn').forEach(b => {
+      const set = (on, e) => {
+        input.vDir(map[b.dataset.dir], on);
+        b.classList.toggle('pressed', on);
+        if (e) { try { b.setPointerCapture(e.pointerId); } catch (err) { } }
+      };
+      b.addEventListener('pointerdown', (e) => { e.preventDefault(); set(true, e); });
+      b.addEventListener('pointerup', (e) => set(false, e));
+      b.addEventListener('pointercancel', (e) => set(false, e));
+      b.addEventListener('pointerleave', (e) => set(false, e));
+    });
   }
-  function moveJoy(clientX, clientY) {
-    const p = toVP(clientX, clientY);
-    let dx = p.x - ox, dy = p.y - oy;
-    const l = Math.hypot(dx, dy);
-    if (l > R) { dx = dx / l * R; dy = dy / l * R; }
-    joyKnob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
-    const nx = dx / R, ny = dy / R;
-    input.setVirtualMove(Math.abs(nx) < 0.12 ? 0 : nx, Math.abs(ny) < 0.12 ? 0 : ny);
-  }
-  joyZone.addEventListener('pointerdown', (e) => {
-    joyId = e.pointerId;
-    try { joyZone.setPointerCapture(joyId); } catch (err) { }
-    const p = toVP(e.clientX, e.clientY);
-    ox = p.x; oy = p.y;                 // 摇杆中心 = 按下的位置
-    placeBase(ox, oy);
-    joyKnob.style.transform = 'translate(0,0)';
-    input.setVirtualMove(0, 0);
-    e.preventDefault();
-  });
-  joyZone.addEventListener('pointermove', (e) => { if (joyId === e.pointerId) moveJoy(e.clientX, e.clientY); });
-  const endJoy = (e) => {
-    if (joyId === e.pointerId) {
-      joyId = null;
-      joyKnob.style.transform = 'translate(0,0)';
-      joyBase.classList.remove('active');
-      input.setVirtualMove(0, 0);
-    }
-  };
-  joyZone.addEventListener('pointerup', endJoy);
-  joyZone.addEventListener('pointercancel', endJoy);
+  // 左下: 移动(WASD); 右下: 射击(方向键)
+  bindPad($('movePad'), { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' });
+  bindPad($('firePad'), { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' });
 
-  // 右射击键
-  const CODE = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
-  document.querySelectorAll('.fbtn').forEach(b => {
-    const set = (on, e) => {
-      input.vDir(CODE[b.dataset.dir], on);
-      b.classList.toggle('pressed', on);
-      if (e) { try { b.setPointerCapture(e.pointerId); } catch (err) { } }
-    };
-    b.addEventListener('pointerdown', (e) => { e.preventDefault(); set(true, e); });
-    b.addEventListener('pointerup', (e) => set(false, e));
-    b.addEventListener('pointercancel', (e) => set(false, e));
-    b.addEventListener('pointerleave', (e) => set(false, e));
-  });
   // 防误触菜单
   window.addEventListener('contextmenu', (e) => e.preventDefault());
 }

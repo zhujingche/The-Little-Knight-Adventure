@@ -54,17 +54,13 @@ body { font-family: 'Press Start 2P', 'Courier New', Consolas, monospace; color:
 
 /* touch controls */
 #touchui { position: absolute; inset: 0; z-index: 6; }
-#joyZone { position: absolute; left: 0; top: 0; width: 52%; height: 100%; }
-#joyBase {
-  position: absolute; width: 128px; height: 128px; left: 0; top: 0;
-  border: 3px solid rgba(255,255,255,.4); border-radius: 50%;
-  background: radial-gradient(circle, rgba(34,28,22,.55), rgba(20,16,12,.5));
-  box-shadow: 0 0 18px rgba(0,0,0,.5);
-  opacity: 0; transition: opacity .12s;
+#movePad { position: absolute; left: 14px; bottom: 16px; width: 170px; height: 170px; }
+#movePad .fbtn {
+  position: absolute; width: 58px; height: 58px; border-radius: 50%;
+  background: rgba(12,24,46,.55); border: 3px solid rgba(150,195,255,.45); color: #d7e8ff;
+  font-size: 16px; display: flex; align-items: center; justify-content: center; touch-action: none;
 }
-#joyBase.active { opacity: 1; }
-#joyKnob { position: absolute; width: 54px; height: 54px; left: 37px; top: 37px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffd9a0, #b06530); border: 3px solid #3a2312; box-shadow: 0 0 14px rgba(255,180,90,.4); }
+#movePad .fbtn:active, #movePad .fbtn.pressed { background: rgba(90,160,255,.6); border-color: #bfe0ff; }
 #firePad { position: absolute; right: 16px; bottom: 16px; width: 170px; height: 170px; }
 #firePad .fbtn {
   position: absolute; width: 58px; height: 58px; border-radius: 50%;
