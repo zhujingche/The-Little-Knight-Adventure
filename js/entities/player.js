@@ -69,12 +69,15 @@ export class Player {
     this.kb.x = Math.cos(ang) * 260;
     this.kb.y = Math.sin(ang) * 260;
     sfx('hurt');
-    game.shake(5);
-    game.parts.blood(this.x, this.y, ang, 8);
+    if (game) {
+      game.hpDirty = true;   // 通知 HUD 及时刷新血条
+      game.shake(5);
+      game.parts.blood(this.x, this.y, ang, 8);
+    }
     if (this.hp <= 0) {
       this.hp = 0;
       this.dead = true;
-      game.onPlayerDied();
+      if (game) game.onPlayerDied();
     }
     return true;
   }

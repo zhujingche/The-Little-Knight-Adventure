@@ -147,6 +147,34 @@ async function main() {
       check('程序化 BGM 已激活(seq 运行)', ok, aud);
       await shot('verify_proc.png');
       if (!ok) throw new Error('程序化BGM未激活: ' + aud);
+    } else if (scenario === 'touch') {
+      await ses('Page.navigate', { url: 'http://127.0.0.1:8123/index.html?auto=1&mobile=1' });
+      for (let i = 0; i < 40; i++) { try { if ((await ev('document.readyState')) === 'complete') break; } catch (e) { } await sleep(200); }
+      await sleep(1200);
+      const x0 = (await ev('window.DEBUG.diag()')).player.x;
+      // 在左半屏按下并右拖, 模拟摇杆
+      await ev(`(()=>{const z=document.getElementById('joyZone');const r=document.getElementById('viewport').getBoundingClientRect();
+        const cx=r.left+(170/960)*r.width, cy=r.top+(360/640)*r.height;
+        z.dispatchEvent(new PointerEvent('pointerdown',{clientX:cx,clientY:cy,pointerId:9,pointerType:'touch',bubbles:true}));
+        const cx2=r.left+(330/960)*r.width, cy2=r.top+(330/640)*r.height;
+        z.dispatchEvent(new PointerEvent('pointermove',{clientX:cx2,clientY:cy2,pointerId:9,pointerType:'touch',bubbles:true}));})()`);
+      await sleep(800);
+      const x1 = (await ev('window.DEBUG.diag()')).player.x;
+      await ev(`document.getElementById('joyZone').dispatchEvent(new PointerEvent('pointerup',{clientX:0,clientY:0,pointerId:9,pointerType:'touch',bubbles:true}));`);
+      check('浮动摇杆可拖动移动玩家', Math.abs(x1 - x0) > 30, 'dx=' + (x1 - x0));
+      const joyActive = await ev(`!!document.getElementById('joyBase').classList.contains('active')`);
+      check('松手后摇杆收起', joyActive === false, 'active=' + joyActive);
+    } else if (scenario === 'hp') {
+      await sleep(1200);
+      const redSum = await ev(`(()=>{let n=0;document.querySelectorAll('#hudHearts .hbox').forEach(c=>{const g=c.getContext('2d');const d=g.getImageData(0,0,c.width,c.height).data;for(let i=0;i<d.length;i+=4){if(d[i]>120&&d[i+1]<90&&d[i+2]<90)n++;}});return n;})()`);
+      const hp0 = (await ev('window.DEBUG.diag()')).player.hp;
+      await ev('window.GAME().player.god=false');
+      await ev('window.GAME().player.takeDamage(3, 0, window.GAME())');
+      await sleep(400);
+      const hp1 = (await ev('window.DEBUG.diag()')).player.hp;
+      const redSum2 = await ev(`(()=>{let n=0;document.querySelectorAll('#hudHearts .hbox').forEach(c=>{const g=c.getContext('2d');const d=g.getImageData(0,0,c.width,c.height).data;for(let i=0;i<d.length;i+=4){if(d[i]>120&&d[i+1]<90&&d[i+2]<90)n++;}});return n;})()`);
+      check('受伤后血量减少', hp1 < hp0, 'hp ' + hp0 + '->' + hp1);
+      check('血条 HUD 随受伤刷新(红像素减少)', redSum2 < redSum, 'redPx ' + redSum + '->' + redSum2);
     } else if (scenario === 'art') {
       // 前往美术板页面并截图(放大预览角色)
       await ses('Page.navigate', { url: 'http://127.0.0.1:8123/tools/artboard.html' });

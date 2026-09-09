@@ -262,29 +262,49 @@ let fpsAcc = 0, fpsN = 0, showFps = false;
 function enableTouch() {
   const tu = $('touchui');
   tu.classList.remove('hidden');
-  // 左摇杆
+  // ---- 浮动摇杆: 在左半边任意处按下即出现, 拖动即移动 ----
   const joyBase = $('joyBase'), joyKnob = $('joyKnob');
-  let joyId = null;
   const joyZone = $('joyZone');
-  const joyCenter = () => {
-    const r = joyBase.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  let joyId = null, ox = 0, oy = 0, R = 54;
+  // 把屏幕坐标换算成视口内逻辑坐标(viewport 被 CSS 缩放)
+  const toVP = (clientX, clientY) => {
+    const r = viewport.getBoundingClientRect();
+    return {
+      x: (clientX - r.left) * (CFG.VIEW_W / r.width),
+      y: (clientY - r.top) * (CFG.VIEW_H / r.height),
+    };
   };
-  function moveJoy(clientX, clientY) {
-    const c = joyCenter();
-    let dx = clientX - c.x, dy = clientY - c.y;
-    const max = 46;
-    const l = Math.hypot(dx, dy);
-    if (l > max) { dx = dx / l * max; dy = dy / l * max; }
-    joyKnob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
-    input.setVirtualMove(dx / max, dy / max);
+  function placeBase(vx, vy) {
+    const bw = joyBase.offsetWidth, bh = joyBase.offsetHeight;
+    joyBase.style.left = (vx - bw / 2) + 'px';
+    joyBase.style.top = (vy - bh / 2) + 'px';
+    joyBase.classList.add('active');
   }
-  joyZone.addEventListener('pointerdown', (e) => { joyId = e.pointerId; joyZone.setPointerCapture(joyId); moveJoy(e.clientX, e.clientY); e.preventDefault(); });
+  function moveJoy(clientX, clientY) {
+    const p = toVP(clientX, clientY);
+    let dx = p.x - ox, dy = p.y - oy;
+    const l = Math.hypot(dx, dy);
+    if (l > R) { dx = dx / l * R; dy = dy / l * R; }
+    joyKnob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    const nx = dx / R, ny = dy / R;
+    input.setVirtualMove(Math.abs(nx) < 0.12 ? 0 : nx, Math.abs(ny) < 0.12 ? 0 : ny);
+  }
+  joyZone.addEventListener('pointerdown', (e) => {
+    joyId = e.pointerId;
+    try { joyZone.setPointerCapture(joyId); } catch (err) { }
+    const p = toVP(e.clientX, e.clientY);
+    ox = p.x; oy = p.y;                 // 摇杆中心 = 按下的位置
+    placeBase(ox, oy);
+    joyKnob.style.transform = 'translate(0,0)';
+    input.setVirtualMove(0, 0);
+    e.preventDefault();
+  });
   joyZone.addEventListener('pointermove', (e) => { if (joyId === e.pointerId) moveJoy(e.clientX, e.clientY); });
   const endJoy = (e) => {
     if (joyId === e.pointerId) {
       joyId = null;
       joyKnob.style.transform = 'translate(0,0)';
+      joyBase.classList.remove('active');
       input.setVirtualMove(0, 0);
     }
   };
@@ -309,6 +329,7 @@ function enableTouch() {
 }
 const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 if (coarse || 'ontouchstart' in window) enableTouch();
+else if (query.get('mobile') === '1') enableTouch();   // 调试: 桌面强制启用触屏控制
 
 // ---------- 启动 ----------
 showScreen('menu');
