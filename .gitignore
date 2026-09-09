@@ -2,10 +2,14 @@
 node_modules/
 *.log
 
-# 自动化测试临时文件
+# 自动化测试临时文件(任意层级都要忽略)
 tools/.edge-stderr.log
 tools/.edge-profile-*/
 tools/.verify-profile-*/
+**/.edge-profile-*/
+**/.verify-profile-*/
+.edge-profile-*/
+.verify-profile-*/
 
 # 运行时本地文件
 .dsh/
