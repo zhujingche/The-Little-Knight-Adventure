@@ -107,5 +107,6 @@ body { font-family: 'Press Start 2P', 'Courier New', Consolas, monospace; color:
 .stat .v { color: #ffd97a; }
 .menu-btns .btn { margin: 0 auto; }
 #fps { position: absolute; right: 6px; top: 6px; font-size: 10px; color: #6f6; background: #000; padding: 2px 4px; z-index: 40; }
+#buildTag { position: absolute; left: 8px; bottom: 8px; font-size: 10px; color: #556; background: rgba(0,0,0,.5); padding: 2px 6px; z-index: 40; border: 1px solid #223; }
 
 canvas { touch-action: none; }
