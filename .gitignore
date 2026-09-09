@@ -1,0 +1,20 @@
+# 依赖/构建产物
+node_modules/
+*.log
+
+# 自动化测试临时文件
+tools/.edge-stderr.log
+tools/.edge-profile-*/
+tools/.verify-profile-*/
+
+# 运行时本地文件
+.dsh/
+shots/
+assets/bgm/*.mp3
+assets/bgm/*.ogg
+assets/bgm/*.wav
+
+# 编辑器/系统
+.DS_Store
+Thumbs.db
+*.tmp

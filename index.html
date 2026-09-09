@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>小骑士的探险</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="stage">
+  <div id="viewport">
+    <canvas id="game" width="960" height="640" tabindex="-1"></canvas>
+
+    <!-- ============ HUD ============ -->
+    <div id="hud" class="hidden">
+      <div id="hudTop">
+        <div id="hudLeft">
+          <div id="hudHearts"></div>
+          <div id="hudPickup"></div>
+        </div>
+        <div id="hudRight">
+          <div id="hudFloor"></div>
+        </div>
+      </div>
+      <div id="hudItems"></div>
+      <div id="roomLabel"></div>
+      <div id="bossBarWrap" class="hidden"><div id="bossName"></div><div id="bossBarFill"></div></div>
+      <div id="itemFlash" class="hidden">
+        <div id="itemFlashName"></div>
+        <div id="itemFlashDesc"></div>
+      </div>
+    </div>
+
+    <!-- ============ mobile touch controls ============ -->
+    <div id="touchui" class="hidden">
+      <div id="joyZone"><div id="joyBase"><div id="joyKnob"></div></div></div>
+      <div id="firePad">
+        <button class="fbtn" data-dir="up"><span>▲</span></button>
+        <button class="fbtn" data-dir="left"><span>◀</span></button>
+        <button class="fbtn" data-dir="down"><span>▼</span></button>
+        <button class="fbtn" data-dir="right"><span>▶</span></button>
+      </div>
+    </div>
+
+    <!-- ============ Screens ============ -->
+    <div id="screen-menu" class="screen">
+      <div class="menu-bg-canvas"><canvas id="menuCanvas" width="960" height="640"></canvas></div>
+      <div class="menu-content">
+        <h1 class="title">小骑士的探险</h1>
+        <p class="subtitle">—— 地牢深处的圣泪传说 ——</p>
+        <div class="menu-btns">
+          <button id="btnStart" class="btn">开始冒险</button>
+          <button id="btnHelp" class="btn btn-sm">操作说明</button>
+          <button id="btnAudio" class="btn btn-sm">音效: 开</button>
+        </div>
+        <div id="helpBox" class="hidden">
+          <p><b>WASD</b> 移动　<b>方向键</b> 朝四方向发射圣泪（可斜向）</p>
+          <p><b>按住鼠标左键</b> 也可朝光标方向发射圣泪（移动端点按屏幕射击）</p>
+          <p><b>E / 空格</b> 开启宝箱　<b>P</b> 暂停</p>
+          <p>移动端：左侧虚拟摇杆移动，右下十字键射击</p>
+          <p>清空房间敌人即可通过大门；击败每层 Boss 拾取“圣物”下到下一层！</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="screen-pause" class="screen hidden">
+      <div class="panel">
+        <h2>暂停</h2>
+        <p id="pauseHint" style="font-size:11px;color:#9a8f80;margin-bottom:22px;">P / Esc 继续</p>
+        <div class="menu-btns">
+          <button id="btnResume" class="btn btn-sm">继续冒险</button>
+          <button id="btnRestartP" class="btn btn-sm">重新开始</button>
+          <button id="btnQuitP" class="btn btn-sm">返回主菜单</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="screen-death" class="screen hidden">
+      <div class="panel">
+        <h2 class="red-title">勇者倒下了…</h2>
+        <div class="statgrid">
+          <div class="stat"><span class="k">击杀数</span><span class="v" id="dKills">0</span></div>
+          <div class="stat"><span class="k">拾取道具</span><span class="v" id="dItems">0</span></div>
+          <div class="stat"><span class="k">存活时间</span><span class="v" id="dTime">0:00</span></div>
+          <div class="stat"><span class="k">抵达层数</span><span class="v" id="dFloor">1-1</span></div>
+          <div class="stat"><span class="k">清空房间</span><span class="v" id="dRooms">0</span></div>
+          <div class="stat"><span class="k">发射圣泪</span><span class="v" id="dTears">0</span></div>
+        </div>
+        <div class="menu-btns">
+          <button id="btnRetry" class="btn">再战一次</button>
+          <button id="btnMenu2" class="btn btn-sm">返回主菜单</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="screen-win" class="screen hidden">
+      <div class="panel">
+        <h2 class="gold-title">圣光降临 · 通关！</h2>
+        <p class="subtitle">你击败了深渊大骑士，夺回了地牢深处被封印的圣辉！</p>
+        <div class="statgrid">
+          <div class="stat"><span class="k">击杀数</span><span class="v" id="wKills">0</span></div>
+          <div class="stat"><span class="k">拾取道具</span><span class="v" id="wItems">0</span></div>
+          <div class="stat"><span class="k">总耗时</span><span class="v" id="wTime">0:00</span></div>
+          <div class="stat"><span class="k">清空房间</span><span class="v" id="wRooms">0</span></div>
+          <div class="stat"><span class="k">发射圣泪</span><span class="v" id="wTears">0</span></div>
+        </div>
+        <div class="menu-btns">
+          <button id="btnAgain" class="btn">再来一次</button>
+          <button id="btnMenu3" class="btn btn-sm">返回主菜单</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="fps" class="hidden"></div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

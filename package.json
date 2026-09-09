@@ -1,0 +1,14 @@
+{
+  "name": "little-knight-quest",
+  "version": "1.0.0",
+  "description": "小骑士的探险 — an Isaac-like roguelike dungeon web game (pure Canvas, zero dependencies)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "play": "node tools/run.js play",
+    "shot": "node tools/run.js shot"
+  },
+  "author": "xiaoqi",
+  "license": "MIT",
+  "private": true
+}
