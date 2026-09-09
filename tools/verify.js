@@ -124,13 +124,29 @@ async function main() {
       await hold('KeyW', 60);
       await sleep(2500);
       const info = await ev('JSON.stringify(window.__bgm || {found:false,files:[],ts:null})');
+      const aud = await ev('JSON.stringify(window.__aud ? window.__aud() : null)');
       console.log('BGM INFO: ' + info);
-      const b = JSON.parse(info);
-      if (!b.found) throw new Error('未检测到自定义音乐文件');
-      if (b.error) console.log('BGM NOTE: ' + b.error);
-      if (!b.playing) console.log('BGM NOTE: 检测到但 play 未进入播放态(可能被浏览器自动播放策略拦截, 点击页面后即会播放)');
-      out.checks.push({ name: '自定义BGM检测', pass: !!b.found, extra: info });
-      console.log((b.found ? 'PASS ' : 'FAIL ') + '自定义BGM检测  :: ' + info);
+      console.log('AUD INFO: ' + aud);
+      const b = JSON.parse(info), a = JSON.parse(aud);
+      let pass;
+      if (b.found) { if (!b.playing) console.log('BGM NOTE: 检测到文件但 play 未进入播放态'); pass = true; }
+      else pass = !!(a && a.seq);
+      out.checks.push({ name: 'BGM 激活(文件或程序化)', pass: !!pass, extra: info + ' | ' + aud });
+      console.log((pass ? 'PASS ' : 'FAIL ') + 'BGM 激活(文件或程序化)  :: ' + info + ' | ' + aud);
+    } else if (scenario === 'proc') {
+      // 强制无用户音乐, 验证程序化 BGM 是否真正激活(相当于在线版场景)
+      await ses('Page.navigate', { url: 'http://127.0.0.1:8123/index.html?auto=1&nobgm=1' });
+      for (let i = 0; i < 40; i++) { try { if ((await ev('document.readyState')) === 'complete') break; } catch (e) { } await sleep(200); }
+      await sleep(1000);
+      await hold('KeyW', 60);
+      await sleep(2200);
+      const aud = await ev('JSON.stringify(window.__aud ? window.__aud() : null)');
+      console.log('AUD INFO: ' + aud);
+      const a = JSON.parse(aud);
+      const ok = a && a.seq === true;
+      check('程序化 BGM 已激活(seq 运行)', ok, aud);
+      await shot('verify_proc.png');
+      if (!ok) throw new Error('程序化BGM未激活: ' + aud);
     } else if (scenario === 'art') {
       // 前往美术板页面并截图(放大预览角色)
       await ses('Page.navigate', { url: 'http://127.0.0.1:8123/tools/artboard.html' });

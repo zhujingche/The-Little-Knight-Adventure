@@ -14,7 +14,7 @@ export function initAudio() {
     AC = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = AC.createGain(); masterGain.gain.value = 0.9; masterGain.connect(AC.destination);
     sfxGain = AC.createGain(); sfxGain.gain.value = 0.9; sfxGain.connect(masterGain);
-    musicGain = AC.createGain(); musicGain.gain.value = 0.34; musicGain.connect(masterGain);
+    musicGain = AC.createGain(); musicGain.gain.value = 0.42; musicGain.connect(masterGain);
     // 噪声缓冲
     const len = AC.sampleRate * 1.0;
     noiseBuf = AC.createBuffer(1, len, AC.sampleRate);
@@ -140,18 +140,18 @@ function scheduleStep(step, t) {
   const chordRoot = S.chords[Math.floor(step / 4) % S.chords.length];
   if (step % 4 === 0) {
     const r = midi(S.root, chordRoot);
-    tone(r, spb * 3.4, { type: 'sine', vol: 0.5, out: 'music', delay: Math.max(0, t - AC.currentTime), attack: 0.02, dec: spb * 3 });
+    tone(r, spb * 3.4, { type: 'sine', vol: 0.62, out: 'music', delay: Math.max(0, t - AC.currentTime), attack: 0.02, dec: spb * 3 });
     // 暗黑五度
-    tone(r * 1.5, spb * 3.4, { type: 'sine', vol: 0.28, out: 'music', delay: Math.max(0, t - AC.currentTime) });
+    tone(r * 1.5, spb * 3.4, { type: 'sine', vol: 0.34, out: 'music', delay: Math.max(0, t - AC.currentTime) });
   }
   // 稀疏琶音(随机走向的阴郁小调)
-  if (step % 2 === 0 && Math.random() < (bossMode ? 1 : 0.55)) {
+  if (step % 2 === 0 && Math.random() < (bossMode ? 1 : 0.6)) {
     const sc = S.notes;
     const base = S.root * 4;
     const idx = (sc.length + (Math.floor(step / 2) % sc.length) + Math.floor(Math.random() * 2) - 1) % sc.length;
     const semis = sc[idx];
     tone(midi(base, semis) * 2, spb * (bossMode ? 0.8 : 0.9), {
-      type: 'triangle', vol: 0.22, out: 'music', delay: Math.max(0, t - AC.currentTime), attack: 0.01, dec: spb
+      type: 'triangle', vol: 0.3, out: 'music', delay: Math.max(0, t - AC.currentTime), attack: 0.01, dec: spb
     });
   }
   // 心跳鼓(Boss 紧张感 / 常规房间稀疏闷鼓)
@@ -170,14 +170,20 @@ export function stopSequencer() {
 // 切换 BGM: floor=层数, boss=是否Boss战
 export function setMusic(floor, boss = false) {
   if (!AC) return;
-  if (floor === currentFloorKey && boss === bossMode && bgmMode !== 'files') return;
   currentFloorKey = floor; bossMode = boss;
-  if (bgmMode === 'procedural') startSequencer();
+  if (bgmMode === 'procedural') startSequencer();   // 幂等: 已在跑则忽略
   else startUserBgm();
 }
+// 调试: 当前 BGM 状态(供自动化验证)
+window.__aud = () => ({ music: bgmMode, seq: !!seqTimer, files: userBgm.length, floor: currentFloorKey, boss: bossMode });
 
 // 尝试加载用户自定义音乐(assets/bgm/bgm_1.mp3 … bgm_3.mp3)
 export async function tryLoadUserBgm() {
+  // 调试: ?nobgm=1 时跳过用户音乐, 强制走程序化 BGM(用于自动化验证)
+  if (new URLSearchParams(location.search).get('nobgm') === '1') {
+    window.__bgm = { found: false, files: [], ts: Date.now() };
+    return false;
+  }
   const names = ['bgm_1.mp3', 'bgm_2.mp3', 'bgm_3.mp3'];
   const found = [];
   for (const n of names) {
