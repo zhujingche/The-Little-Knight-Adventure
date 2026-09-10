@@ -15,6 +15,20 @@ tools/.verify-profile-*/
 .dsh/
 shots/
 
+# 私人文档/作业(禁止上传)
+作业/
+*.doc
+*.docx
+*.docm
+*.pdf
+*.ppt
+*.pptx
+*.xls
+*.xlsx
+实验*
+课程*
+作业*
+
 # 编辑器/系统
 .DS_Store
 Thumbs.db
