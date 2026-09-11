@@ -535,11 +535,24 @@ export class Game {
   maybeDrop(e) {
     const room = this.currentRoom;
     const roll = Math.random();
-    if (e.elite) { this.spawnItemPedestal(e.x, e.y); return; }
+    // 精英怪: 必掉道具 + 一小堆金币
+    if (e.elite) {
+      this.spawnItemPedestal(e.x, e.y);
+      for (let i = 0; i < 3; i++) this.spawnCoinPickup(e.x + (i - 1) * 14, e.y + 10, 1);
+      return;
+    }
     if (roll < 0.08 + this.floorIdx * 0.01) { this.spawnItemPedestal(e.x, e.y); return; }
     if (roll < 0.20) { this.spawnHeartPickup(e.x, e.y, Math.random() < 0.4 ? 1 : 2); return; }
     if (roll < 0.30) { this.spawnKeyPickup(e.x, e.y); return; }
-    if (roll < 0.78) this.spawnCoinPickup(e.x, e.y, 1 + (Math.random() < 0.3 ? 1 : 0));
+    // 金币: 约 58% 概率掉落, 1~3 枚(越深的层掉得越多)
+    if (roll < 0.88) {
+      const r2 = Math.random();
+      let amount = 1;
+      if (r2 < 0.4) amount = 2;
+      if (r2 > 0.85) amount = 3;
+      if (this.floorIdx >= 3 && r2 < 0.5) amount++;
+      this.spawnCoinPickup(e.x, e.y, amount);
+    }
   }
 
   spawnCoinPickup(x, y, amount = 1) {
@@ -567,13 +580,16 @@ export class Game {
     this.parts.ring(7 * T + T / 2, 4 * T + T / 2, '#ffe9a0', 30);
     sfx('unlock');
     hud.roomToast('门开了……');
-    // 普通房/奖励房: 清房奖励
+    // 普通房/奖励房: 清房奖励(含金币, 保证商店买得起东西)
     if (room.role === 'normal' || room.role === 'treasure') {
+      const cx = 7 * T + T / 2, cy = 4 * T + T / 2;
+      const coins = room.role === 'treasure' ? 2 + (Math.random() < 0.5 ? 1 : 0) : 1 + (Math.random() < 0.5 ? 1 : 0);
+      for (let i = 0; i < coins; i++) this.spawnCoinPickup(cx + (i - (coins - 1) / 2) * 20, cy + 26, 1);
       const r = Math.random();
       if (room.role === 'treasure' || r < 0.3) {
-        this.spawnItemPedestal(7 * T + T / 2, 4 * T + T / 2);
+        this.spawnItemPedestal(cx, cy);
       } else if (r < 0.55) {
-        this.spawnHeartPickup(7 * T + T / 2, 4 * T + T / 2, 2);
+        this.spawnHeartPickup(cx, cy, 2);
       }
     }
     this.hpDirty = true;
@@ -590,6 +606,13 @@ export class Game {
     const room = this.currentRoom;
     // 必掉 BOSS 道具
     this.spawnItemPedestal(7 * T + T / 2, 3 * T + T / 2);
+    // Boss 掉落一大笔金币(6~10 枚, 环绕散开)
+    const coinN = 6 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < coinN; i++) {
+      const a = (i / coinN) * Math.PI * 2;
+      this.spawnCoinPickup(boss.x + Math.cos(a) * 40, boss.y + Math.sin(a) * 32, 1);
+    }
+    this.parts.text(boss.x, boss.y - 60, '+' + coinN + '¢', '#ffd97a', 1.6, 16);
     // 出现下一层楼梯(记录到房间, 离开再回来仍存在)
     this.stairs = { x: 7 * T + T / 2, y: 6 * T + T / 2, t: 0 };
     room.stairs = this.stairs;

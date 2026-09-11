@@ -344,6 +344,35 @@ async function main() {
       const n3 = await ev('window.DEBUG.bossName()');
       check('三层 Boss 为深渊大骑士', d.boss && d.boss.tier === 3 && n3 === '深渊大骑士', 'tier=' + (d.boss && d.boss.tier) + ' name=' + n3);
       await shot('snap_boss3.png');
+    } else if (scenario === 'coins') {
+      await ev('window.DEBUG.god(true)');
+      await ev('window.DEBUG.teleport("normal")');
+      await sleep(500);
+      const coinN = () => ev('window.GAME().pickups.filter(p=>p.kind==="coin"&&!p.taken).length');
+      // 1) 清空房间 → 清房奖励里应有金币
+      for (let i = 0; i < 4; i++) { await ev('window.DEBUG.nuke()'); await sleep(220); }
+      const c1 = await coinN();
+      check('清空房间会掉落金币奖励', c1 > 0, 'coinPickups=' + c1);
+      // 2) 击杀敌人掉落金币(把玩家挪开, 避免自动拾取干扰计数)
+      await ev('window.GAME().pickups.length = 0');
+      for (let i = 0; i < 20; i++) await ev(`window.DEBUG.spawnAt("gaper", ${60 + (i % 5) * 30}, ${-80 + Math.floor(i / 5) * 40})`);
+      await ev('(()=>{const g=window.GAME();g.player.x=100;g.player.y=560;})()');
+      await sleep(200);
+      await ev('window.DEBUG.nuke()');
+      await sleep(400);
+      const c2 = await coinN();
+      check('击杀敌人会掉落金币', c2 >= 3, '20只怪掉出金币堆=' + c2);
+      // 3) Boss 掉落一大笔金币
+      await ev('window.GAME().pickups.length = 0');
+      await ev('window.DEBUG.teleport("boss")');
+      await sleep(600);
+      await ev('window.DEBUG.killBoss()');
+      await sleep(900);
+      const c3 = await coinN();
+      check('击败 Boss 掉落金币', c3 >= 6, 'boss金币=' + c3);
+      const hasStairs = (await diag()).cur.stairs === true;
+      check('Boss 后仍出现楼梯', hasStairs, 'stairs=' + hasStairs);
+      await shot('snap_coins.png');
     } else if (scenario === 'touch') {
       await ses('Page.navigate', { url: 'http://127.0.0.1:8123/index.html?auto=1&mobile=1' });
       for (let i = 0; i < 40; i++) { try { if ((await ev('document.readyState')) === 'complete') break; } catch (e) { } await sleep(200); }
