@@ -1,13 +1,15 @@
 // projectiles.js — 圣泪(玩家弹)与敌人弹; 具备以撒式强化字段
 import { drawSprite } from '../util.js';
-import { tearSprite } from '../art/world.js';
+import { tearSprite, bladeSprite } from '../art/world.js';
 
 export class Projectile {
   constructor(opts) {
     this.x = opts.x; this.y = opts.y;
     this.vx = opts.vx; this.vy = opts.vy;
     this.dmg = opts.dmg;
-    this.radius = opts.radius || 5.5;
+    this.blade = !!opts.blade;           // 骨钉光刃(斩击波)
+    this.size = opts.size || 1;          // 视觉/判定缩放
+    this.radius = (opts.radius || 5.5) * (this.blade ? 1 : 1);
     this.big = !!opts.big;               // 巨型圣泪(更大/更重)
     this.crit = !!opts.crit;             // 暴击(金色)
     this.range = opts.range || 420;      // 飞行距离上限(px)
@@ -51,6 +53,23 @@ export class Projectile {
     if (this.traveled > this.range) this.dead = true;
   }
   draw(g) {
+    if (this.blade) {
+      const ang = Math.atan2(this.vy, this.vx);
+      const prog = Math.max(0, Math.min(1, this.traveled / this.range));
+      const sc = (0.95 + prog * 0.75) * (this.size || 1);
+      const alpha = prog > 0.75 ? (1 - prog) / 0.25 : 1;
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const gr = 22 * sc;
+      const glow = g.createRadialGradient(this.x, this.y, 1, this.x, this.y, gr);
+      glow.addColorStop(0, 'rgba(150,225,255,0.34)');
+      glow.addColorStop(1, 'rgba(60,140,255,0)');
+      g.fillStyle = glow;
+      g.beginPath(); g.arc(this.x, this.y, gr, 0, Math.PI * 2); g.fill();
+      g.restore();
+      drawSprite(g, bladeSprite(), this.x, this.y, sc, false, false, ang, alpha);
+      return;
+    }
     const sp = tearSprite(this.color);
     // 残影
     g.globalAlpha = 0.22;

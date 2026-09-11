@@ -6,7 +6,7 @@
 <title>小骑士的探险</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2.3">
+<link rel="stylesheet" href="css/style.css?v=2.4">
 </head>
 <body>
 <div id="stage">
@@ -52,6 +52,7 @@
         <button class="fbtn" data-dir="right"><span>▶</span></button>
       </div>
       <button id="mapBtn">地图</button>
+      <button id="slashBtn">斩</button>
     </div>
 
     <!-- ============ Screens ============ -->
@@ -67,9 +68,10 @@
         </div>
         <div id="helpBox" class="hidden">
           <p><b>WASD</b> 移动　<b>方向键</b> 朝四方向发射圣泪（可斜向）</p>
-          <p><b>按住鼠标左键</b> 也可朝光标方向发射圣泪（移动端点按屏幕射击）</p>
+          <p><b>J / K</b> 骨钉挥击 → 斩出青白光刃（高伤害、可穿透）</p>
+          <p><b>按住鼠标左键</b> 朝光标方向射击（移动端也可点按屏幕射击）</p>
           <p><b>E / 空格</b> 开启宝箱　<b>P</b> 暂停　<b>Tab / M</b> 楼层地图</p>
-          <p>移动端：左下方向键移动，右下十字键射击</p>
+          <p>移动端：左下方向键移动，右下十字键射击，右侧「地图」「斩」按钮</p>
           <p>清空房间敌人即可通过大门；击败每层 Boss 拾取“圣物”下到下一层！</p>
         </div>
       </div>
@@ -124,10 +126,10 @@
     </div>
 
     <div id="fps" class="hidden"></div>
-    <div id="buildTag">v2.3</div>
+    <div id="buildTag">v2.4</div>
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=2.3"></script>
+<script type="module" src="js/main.js?v=2.4"></script>
 </body>
 </html>

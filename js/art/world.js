@@ -1,6 +1,22 @@
 // art/world.js — 岩石/宝箱/红心/祭坛/圣泪/装饰物 硬像素美术
 import { pixSprite } from './pix.js';
 
+// ---------- 骨钉光刃(挥击发出的青白斩击波, 指向 +X) ----------
+export function bladeSprite() {
+  return pixSprite('fx:blade', 22, 16, (b) => {
+    const cy = 8;
+    for (let x = 0; x < 22; x++) {
+      const t = x / 21;
+      const bulge = Math.sin(Math.PI * t);
+      const h = 1.0 + bulge * 5.6;                 // 中间厚
+      const bend = Math.sin(Math.PI * t) * 1.5 - 0.75; // 轻微弧形
+      b.rect(x, cy - h * 0.7 + bend, 1, Math.max(1, h * 1.4), '#63c8ff', 0.55);   // 外辉光
+      b.rect(x, cy - h * 0.46 + bend, 1, Math.max(1, h * 0.92), '#c6ecff');       // 主体
+      b.rect(x, cy - h * 0.16 + bend, 1, Math.max(1, h * 0.32), '#ffffff');       // 核心亮线
+    }
+  }, '#123048');
+}
+
 // ---------- 圣泪(子弹) ----------
 export function tearSprite(color = 'W') {
   const cols = {

@@ -132,6 +132,10 @@ $('btnHelp').addEventListener('click', () => {
 $('mapBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); $('mapBtn').classList.add('pressed'); toggleMap(); });
 $('mapBtn').addEventListener('pointerup', () => $('mapBtn').classList.remove('pressed'));
 $('mapBtn').addEventListener('pointercancel', () => $('mapBtn').classList.remove('pressed'));
+// 手机: 骨钉斩击按钮
+$('slashBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); input.vDir('KeyJ', true); $('slashBtn').classList.add('pressed'); });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
+  $('slashBtn').addEventListener(ev, () => { input.vDir('KeyJ', false); $('slashBtn').classList.remove('pressed'); }));
 
 function startGame() {
   if (!game) game = new Game(canvas);

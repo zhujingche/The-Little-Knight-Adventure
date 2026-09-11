@@ -28,6 +28,9 @@ export class Player {
     this.kb = { x: 0, y: 0 };
     this.stepT = 0;
     this.shootPose = 0;      // 射击后坐抖动
+    this.slashCd = 0;        // 挥击冷却
+    this.slashPose = 0;      // 挥击动画
+    this.slashes = 0;        // 挥击次数(统计)
     this.items = [];         // 收集的道具 id
     this.visuals = [];       // 外观叠加层 id
     this.walkCycle = 0;
@@ -45,6 +48,7 @@ export class Player {
     // 圣泪强化
     this.f = { pierce: false, homing: false, split: false, burn: false, spectral: false, laser: false, tri: false, quad: false, spread: false, giga: false, crit: false, luck: 0 };
     this.fired = 0;
+    this.slashes = 0;
   }
 
   get dmg() { return (P.baseDmg + this.addDmg) * this.dmgMult; }
@@ -87,7 +91,9 @@ export class Player {
     this.iTimer = Math.max(0, this.iTimer - dt);
     this.hurtFlash = Math.max(0, this.hurtFlash - dt);
     this.fireCd -= dt;
+    this.slashCd -= dt;
     this.shootPose = Math.max(0, this.shootPose - dt * 5);
+    this.slashPose = Math.max(0, this.slashPose - dt * 5.5);
     this.animT += dt;
 
     // ---- 移动 ----
@@ -129,8 +135,44 @@ export class Player {
       this.face = { x: this.aim.x, y: this.aim.y };
       this.shootPose = 1;
     }
+    // ---- 骨钉挥击: 斩出光刃(J / K, 手机“斩”键) ----
+    if (input.down('KeyJ') && this.slashCd <= 0) {
+      let dir = this.aim;
+      if (!dir) {
+        const fx = this.face ? this.face.x : 0, fy = this.face ? this.face.y : 1;
+        const fl = Math.hypot(fx, fy) || 1;
+        dir = { x: fx / fl, y: fy / fl };
+      }
+      this.slash(game, dir);
+      this.slashCd = 0.5;
+      this.slashPose = 1;
+    }
     // 门检测
     game.checkDoorTransition(this);
+  }
+
+  // 骨钉挥击 → 发射青白光刃
+  slash(game, aim) {
+    const ang = Math.atan2(aim.y, aim.x);
+    let dmg = this.dmg * 1.8;
+    let crit = false;
+    if (this.f.crit && Math.random() < 0.15) { dmg *= 2; crit = true; }
+    const p = new Projectile({
+      x: this.x + aim.x * 18, y: this.y - 4 + aim.y * 18,
+      vx: Math.cos(ang) * 430, vy: Math.sin(ang) * 430,
+      dmg, range: 250, radius: 13, pierce: true, blade: true, crit,
+      spectral: this.f.spectral, size: this.f.giga ? 1.35 : 1,
+      color: 'W', owner: this,
+    });
+    game.pTears.push(p);
+    this.slashes++;
+    this.face = { x: aim.x, y: aim.y };
+    // 挥击前冲一点(手感)
+    this.kb.x += aim.x * 230;
+    this.kb.y += aim.y * 230;
+    sfx('slash');
+    game.parts.sparkle(this.x + aim.x * 24, this.y - 4 + aim.y * 24, '#dff4ff', 4);
+    game.shake(2);
   }
 
   fire(game, aim) {
@@ -208,6 +250,20 @@ export class Player {
     // 开火瞬间微放大(帅气后坐); 基础尺寸已由更大画布承载
     const pop = this.shootPose > 0 ? 1 + Math.sin(this.shootPose * Math.PI) * 0.05 : 1;
     drawSprite(g, s, this.x + rx, this.y - 4 + yoff + ry, pop, flip);
+    // 挥击斩击弧光(青白)
+    if (this.slashPose > 0) {
+      const k = Math.sin(Math.min(1, this.slashPose) * Math.PI);
+      const a0 = Math.atan2(this.face.y || 0, this.face.x || 1);
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = 'rgba(150,225,255,' + (0.5 * k) + ')';
+      g.lineWidth = 7 * k + 2;
+      g.beginPath(); g.arc(this.x, this.y - 4, 31, a0 - 1.0, a0 + 1.0); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,' + (0.85 * k) + ')';
+      g.lineWidth = 2.5 * k + 1;
+      g.beginPath(); g.arc(this.x, this.y - 4, 31, a0 - 0.82, a0 + 0.82); g.stroke();
+      g.restore();
+    }
     // 瞄准时目镜发光(青蓝)
     if (this.aim && !this.dead) {
       let o = 'down';

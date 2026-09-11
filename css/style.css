@@ -123,4 +123,13 @@ body { font-family: 'Press Start 2P', 'Courier New', Consolas, monospace; color:
 }
 #mapBtn.pressed { background: rgba(90,160,255,.6); }
 
+/* 手机骨钉斩击按钮 */
+#slashBtn {
+  position: absolute; right: 200px; bottom: 26px; width: 74px; height: 74px; border-radius: 50%;
+  font-family: inherit; font-size: 20px; color: #fff3d0; cursor: pointer;
+  background: radial-gradient(circle at 35% 30%, rgba(255,235,180,.35), rgba(150,110,30,.55));
+  border: 3px solid rgba(255,220,140,.6);
+}
+#slashBtn:active, #slashBtn.pressed { background: radial-gradient(circle at 35% 30%, #fff3c0, #c08a20); color: #32220a; }
+
 canvas { touch-action: none; }

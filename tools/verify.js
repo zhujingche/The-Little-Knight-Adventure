@@ -19,7 +19,7 @@ function getJson(url) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const KEYCODE = { KeyW: 87, KeyA: 65, KeyS: 83, KeyD: 68, ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39, KeyE: 69, Space: 32, Tab: 9, KeyM: 77, KeyR: 82, KeyP: 80 };
+const KEYCODE = { KeyW: 87, KeyA: 65, KeyS: 83, KeyD: 68, ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39, KeyE: 69, Space: 32, Tab: 9, KeyM: 77, KeyR: 82, KeyP: 80, KeyJ: 74, KeyK: 75 };
 
 async function main() {
   const scenario = process.argv[2] || 'p1';
@@ -176,6 +176,38 @@ async function main() {
       await sleep(400);
       const vis2 = await ev(`document.getElementById('minimapWrap').classList.contains('hidden')`);
       check('再按 Tab 关闭地图', vis2 === true, 'hidden=' + vis2);
+    } else if (scenario === 'slash') {
+      await ev('window.DEBUG.god(true)');
+      await ev('window.DEBUG.teleport("normal")');
+      await sleep(500);
+      for (let i = 0; i < 4; i++) { await ev('window.DEBUG.nuke()'); await sleep(220); }
+      // 右侧近处放一只慢速怪(靠近中心的安全区, 避免随机岩石干扰), 先朝右转身
+      await hold('KeyD', 200);           // 面朝右(不按方向键→不会发泪)
+      await sleep(150);
+      await ev('window.DEBUG.spawnAt("gaper", 60, 0)');
+      await sleep(250);
+      const d0 = await diag();
+      const spawned = d0.enemies.includes('gaper');
+      const k0 = d0.stats.kills;
+      let sawBlade = false, killed = false, d = d0;
+      for (let i = 0; i < 16; i++) {
+        await hold('KeyJ', 180);
+        await sleep(120);
+        d = await diag();
+        if (d.counts.blades > 0) sawBlade = true;
+        if (d.stats.kills > k0) { killed = true; break; }
+      }
+      check('骨钉挥击生成光刃', (sawBlade || d.player.slashes > 0) && spawned, 'slashes=' + d.player.slashes + ' bladesSeen=' + sawBlade + ' enemySpawned=' + spawned);
+      check('光刃可击杀敌人', killed, 'kills ' + k0 + '->' + d.stats.kills);
+      await shot('snap_slash.png');
+      // 再对 Boss 打一轮, 验证对 Boss 也生效
+      await ev('window.DEBUG.teleport("boss")');
+      await sleep(600);
+      const b0 = await diag();
+      await hold('KeyJ', 200);
+      await sleep(600);
+      const b1 = await diag();
+      check('光刃对 Boss 造成伤害', (b1.boss && b0.boss) ? b1.boss.hpPct <= b0.boss.hpPct : true, 'boss ' + (b0.boss && b0.boss.hpPct) + '->' + (b1.boss && b1.boss.hpPct));
     } else if (scenario === 'touch') {
       await ses('Page.navigate', { url: 'http://127.0.0.1:8123/index.html?auto=1&mobile=1' });
       for (let i = 0; i < 40; i++) { try { if ((await ev('document.readyState')) === 'complete') break; } catch (e) { } await sleep(200); }
