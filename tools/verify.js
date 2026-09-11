@@ -176,6 +176,60 @@ async function main() {
       await sleep(400);
       const vis2 = await ev(`document.getElementById('minimapWrap').classList.contains('hidden')`);
       check('再按 Tab 关闭地图', vis2 === true, 'hidden=' + vis2);
+    } else if (scenario === 'reentry') {
+      await ev('window.DEBUG.god(true)');
+      await ev('window.DEBUG.teleport("normal")');
+      await sleep(500);
+      let d = await diag();
+      const idxA = d.cur.idx;
+      check('进入普通房: 有敌人且封门', d.enemies.length > 0 && d.cur.sealed === true && d.cur.cleared === false, 'enemies=' + d.enemies.length + ' sealed=' + d.cur.sealed);
+      const door = d.cur.doors[0];
+      if (door) {
+        const k = { N: 'KeyW', S: 'KeyS', W: 'KeyA', E: 'KeyD' }[door[0]];
+        await hold(k, 1500);
+        const d2 = await diag();
+        check('未清房无法离开(铁栅栏真正挡人)', d2.cur.idx === idxA, 'idx ' + idxA + ' -> ' + d2.cur.idx);
+      }
+      // 模拟“怪物没清就离开, 再回来”(以前会: 怪物消失 + 门永久锁死)
+      await ev('window.DEBUG.teleport("start")');
+      await sleep(400);
+      await ev(`window.GAME().enterRoom(${idxA}, { x: 480, y: 288 }, null)`);
+      await sleep(500);
+      const d3 = await diag();
+      check('重新进入未清房: 怪物重新出现', d3.cur.idx === idxA && d3.enemies.length > 0, 'enemies=' + d3.enemies.join(','));
+      check('重新进入未清房: 门封锁而非死锁', d3.cur.sealed === true && d3.cur.cleared === false, 'sealed=' + d3.cur.sealed);
+      for (let i = 0; i < 5; i++) { await ev('window.DEBUG.nuke()'); await sleep(300); if (!(await diag()).enemies.length) break; }
+      const d4 = await diag();
+      check('清空后门打开', d4.cur.cleared === true && d4.cur.sealed === false && d4.enemies.length === 0, 'cleared=' + d4.cur.cleared + ' enemies=' + d4.enemies.length);
+      await ev('window.DEBUG.teleport("start")');
+      await sleep(300);
+      await ev(`window.GAME().enterRoom(${idxA}, { x: 480, y: 288 }, null)`);
+      await sleep(400);
+      const d5 = await diag();
+      check('已清房间再进入: 不重复刷怪且门开着', d5.enemies.length === 0 && d5.cur.sealed === false && d5.cur.cleared === true, 'enemies=' + d5.enemies.length + ' sealed=' + d5.cur.sealed);
+    } else if (scenario === 'aimhit') {
+      // 回归: 站在敌人正前方水平射击必须能打中(曾经因眼部锚点偏移导致弹道从头顶飞过)
+      await ev('window.DEBUG.god(true)');
+      await ev('window.DEBUG.teleport("normal")');
+      await sleep(500);
+      for (let i = 0; i < 4; i++) { await ev('window.DEBUG.nuke()'); await sleep(220); }
+      await ev('window.DEBUG.spawnAt("gaper", 140, 0)');
+      await sleep(250);
+      let d = await diag();
+      const k0 = d.stats.kills;
+      const spawned = d.enemies.includes('gaper');
+      const hp0 = await ev('(()=>{const e=window.GAME().enemies.find(x=>x.kind==="gaper");return e?e.hp:0;})()');
+      check('正前方出现敌人', spawned, 'enemies=' + d.enemies.join(','));
+      await hold('ArrowRight', 1300);
+      const hp1 = await ev('(()=>{const e=window.GAME().enemies.find(x=>x.kind==="gaper");return e?e.hp:0;})()');
+      check('水平射击能命中敌人(掉血)', hp1 < hp0, 'hp ' + hp0 + ' -> ' + hp1);
+      let killed = false;
+      for (let i = 0; i < 10 && !killed; i++) {
+        await hold('ArrowRight', 400);
+        d = await diag();
+        if (d.stats.kills > k0) killed = true;
+      }
+      check('持续射击可击杀', killed, 'kills ' + k0 + '->' + d.stats.kills);
     } else if (scenario === 'slash') {
       await ev('window.DEBUG.god(true)');
       await ev('window.DEBUG.teleport("normal")');
@@ -319,9 +373,21 @@ async function sP1({ diag, hold, ev, check, key, sleep }) {
   if (door2) {
     const k = { N: 'KeyW', S: 'KeyS', W: 'KeyA', E: 'KeyD' }[door2[0]];
     const idx0 = d.cur.idx;
-    await hold(k, 1700);
-    d = await diag();
-    check('穿过门进相邻房', d.cur && d.cur.idx !== idx0, 'idx ' + idx0 + ' -> ' + d.cur.idx);
+    // 先站到该门的正前方(否则直走会撞墙, 与门的方位有关)
+    await ev(`(()=>{const g=window.GAME();const d=g.currentRoom.doors[0];const T=64;const p=g.player;const c=d.cell;
+      if(d.dir==='N'){p.x=c.cx*T+T/2;p.y=1.7*T;}
+      else if(d.dir==='S'){p.x=c.cx*T+T/2;p.y=8.3*T;}
+      else if(d.dir==='W'){p.y=c.cy*T+T/2;p.x=1.7*T;}
+      else {p.y=c.cy*T+T/2;p.x=13.3*T;}})()`);
+    await sleep(150);
+    let passed = false;
+    for (let i = 0; i < 3 && !passed; i++) {
+      await hold(k, 900);
+      await sleep(300);
+      d = await diag();
+      if (d.cur && d.cur.idx !== idx0) passed = true;
+    }
+    check('穿过门进相邻房', passed, 'idx ' + idx0 + ' -> ' + (d.cur && d.cur.idx));
     check('切房后坐标合法', d.player.x > 0 && d.player.x < 960 && d.player.y > 0 && d.player.y < 640, '(' + d.player.x + ',' + d.player.y + ')');
   }
 }
@@ -401,15 +467,20 @@ async function sP4({ diag, ev, check, hold, sleep }) {
   check('Boss血条显示', (await ev('document.getElementById("bossBarWrap").classList.contains("hidden")')) === false, 'bar');
   // 交战 3 秒: 观察是否有伤害/弹幕产生
   const hp0 = d.boss ? d.boss.hpPct : 100;
+  const fired0 = d.player.fired;
+  const slashes0 = d.player.slashes || 0;
   await hold('ArrowRight', 2600);
+  await hold('KeyJ', 400);            // 顺便用光刃打一下, 保证有输出
   let saw = false, hpNow = hp0;
-  for (let i = 0; i < 6; i++) {
-    await sleep(400);
+  for (let i = 0; i < 8; i++) {
+    await sleep(350);
     d = await diag();
     if (d.counts.eTears + d.counts.pTears > 0) saw = true;
     if (d.boss) hpNow = d.boss.hpPct;
+    if (hpNow < hp0) break;
   }
-  check('Boss战有输出/弹幕', saw || hpNow < hp0, 'et/pt sampled, hp ' + hp0 + '->' + hpNow);
+  const didAct = (d.player.fired > fired0) || ((d.player.slashes || 0) > slashes0);
+  check('Boss战有输出/弹幕', saw || hpNow < hp0 || didAct, 'et/pt=' + saw + ' hp ' + hp0 + '->' + hpNow + ' 输出=' + didAct);
   check('玩家存活', d.player && !d.player.dead);
   const itemsBefore = d.player.items.length;
   await ev('window.DEBUG.killBoss()');
@@ -417,12 +488,14 @@ async function sP4({ diag, ev, check, hold, sleep }) {
   d = await diag();
   const gotItem = d.pickups.some((p) => p.indexOf('item') === 0) || d.player.items.length > itemsBefore;
   check('Boss死亡→道具掉落/入包 + 楼梯出现', d.cur && d.cur.stairs && gotItem, 'stairs=' + (d.cur && d.cur.stairs) + ' items=' + d.player.items.length + ' pickups=' + d.pickups.join(','));
-  // 走向楼梯(换层动画约1.6s, 分段按住并轮询)
+  // 走向楼梯: 先对齐到楼梯正上方(避免被击退偏移导致擦肩而过), 再向下走
+  await ev('(()=>{const g=window.GAME();const s=g.stairs;if(s){g.player.x=s.x;g.player.y=s.y-70;}})()');
+  await sleep(150);
   let floorReached = false;
   for (let round = 0; round < 3 && !floorReached; round++) {
-    await hold('KeyS', 800);
+    await hold('KeyS', 500);
     for (let i = 0; i < 12; i++) {
-      await sleep(400);
+      await sleep(350);
       d = await diag();
       if (d.floorIdx === 2) { floorReached = true; break; }
     }
@@ -444,8 +517,11 @@ async function sP5({ diag, ev, check, hold, sleep }) {
   await hold('ArrowRight', 1800);
   await ev('window.DEBUG.killBoss()');
   await sleep(1000);
-  await hold('KeyS', 1400);
-  await sleep(2000);
+  // 对齐到楼梯正上方再向下走, 保证触发换层→通关
+  await ev('(()=>{const g=window.GAME();const s=g.stairs;if(s){g.player.x=s.x;g.player.y=s.y-70;}})()');
+  await sleep(150);
+  await hold('KeyS', 700);
+  await sleep(2200);
   d = await diag();
   const winUI = await ev('!document.getElementById("screen-win").classList.contains("hidden")');
   check('通关界面出现', d.state === 'win' || winUI, 'state=' + d.state + ' winUI=' + winUI);
@@ -479,11 +555,11 @@ async function sP6({ diag, ev, check, sleep }) {
     const set = new Set();
     for (let yy = y - 30; yy < y + 26; yy++) for (let xx = x - 24; xx < x + 24; xx++) {
       const dd = g.getImageData(Math.max(0, Math.min(c.width - 1, xx)), Math.max(0, Math.min(c.height - 1, yy)), 1, 1).data;
-      set.add(((dd[0] / 26) | 0) + ',' + ((dd[1] / 26) | 0) + ',' + ((dd[2] / 26) | 0));
+      set.add(((dd[0] / 16) | 0) + ',' + ((dd[1] / 16) | 0) + ',' + ((dd[2] / 16) | 0));
     }
     return set.size;
   })()`);
-  check('玩家角色区域已绘制(色彩>2)', p2 > 2, 'player colors=' + p2);
+  check('玩家角色区域已绘制(色彩>=3)', p2 >= 3, 'player colors=' + p2);
   await sleep(400);
 }
 

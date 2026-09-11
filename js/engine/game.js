@@ -105,37 +105,45 @@ export class Game {
     this.stairs = room.stairs || null;
     this.roomHadHostiles = false;
 
-    if (!room.spawned) {
-      room.spawned = true;
-      const isBossRoom = room.role === 'boss';
-      if (isBossRoom) {
-        if (!room.cleared) {
-          const kind = this.floorIdx === 1 ? 'hop' : 'knight';
-          const hpMul = this.floorIdx === 3 ? 520 / 380 : 1;
-          this.boss = new Boss(kind, 7 * T + T / 2, 4 * T + T / 2, this, {
-            hp: kind === 'hop' ? 210 * (1 + (this.floorIdx - 1) * 0.25) : 380 * hpMul,
-            speedMul: this.floorIdx >= 3 ? 1.18 : 1,
-          });
-          this.roomHadHostiles = true;
-          room.bossLive = true;
-          room.sealed = true;
+    // 房间内容: 未清空的房间每次进入都会重新生成待命怪(修复“出去再进来怪物消失/门锁死”)
+    const isBossRoom = room.role === 'boss';
+    room.spawned = true;
+    if (isBossRoom) {
+      if (!room.cleared) {
+        const kind = this.floorIdx === 1 ? 'hop' : 'knight';
+        const hpMul = this.floorIdx === 3 ? 520 / 380 : 1;
+        this.boss = new Boss(kind, 7 * T + T / 2, 4 * T + T / 2, this, {
+          hp: kind === 'hop' ? 210 * (1 + (this.floorIdx - 1) * 0.25) : 380 * hpMul,
+          speedMul: this.floorIdx >= 3 ? 1.18 : 1,
+        });
+        room.hadHostiles = true;
+        this.roomHadHostiles = true;
+        room.bossLive = true;
+        room.sealed = true;
+        if (!room.bossIntroShown) {
+          room.bossIntroShown = true;
           sfx('bossRoar');
           hud.roomToast('⚠ BOSS · ' + (kind === 'hop' ? '大眼魔王' : '深渊大骑士') + ' ⚠', true);
-          hud.bossBar(true, 1, kind === 'knight', kind === 'hop' ? '大眼魔王' : '深渊大骑士');
         }
+        hud.bossBar(true, 1, kind === 'knight', kind === 'hop' ? '大眼魔王' : '深渊大骑士');
       } else {
-        for (const p of room.pending) {
-          const e = new Enemy(p.kind, p.x, p.y, this, { mini: p.mini, elite: p.elite });
-          this.enemies.push(e);
-        }
-        if (this.enemies.length) {
-          this.roomHadHostiles = true;
-          room.sealed = true;
-        } else room.cleared = true;
+        room.sealed = false;
       }
-    } else if (this.enemies.length === 0 && this.roomHadHostiles && !room.cleared) {
-      // 若敌人已清但标记未结算(离开后再回)不会发生——锁门机制保证
-      room.cleared = true;
+    } else if (!room.cleared) {
+      if (room.pending.length) {
+        for (const p of room.pending) {
+          this.enemies.push(new Enemy(p.kind, p.x, p.y, this, { mini: p.mini, elite: p.elite }));
+        }
+        room.hadHostiles = true;
+        this.roomHadHostiles = true;
+        room.sealed = true;      // 有敌人 → 封门
+      } else {
+        // 本就没有敌人的房间(起点/空房)直接算已清
+        room.cleared = true;
+        room.sealed = false;
+      }
+    } else {
+      room.sealed = false;       // 已清空的房间: 门保持打开
     }
     // 玩家位置
     const p = this.player;
@@ -157,7 +165,10 @@ export class Game {
     const e = new Enemy(kind, x, y, this, opts);
     this.enemies.push(e);
     this.roomHadHostiles = true;
-    this.currentRoom.sealed = true;
+    if (this.currentRoom) {
+      this.currentRoom.hadHostiles = true;
+      this.currentRoom.sealed = true;
+    }
     return e;
   }
 
@@ -490,9 +501,9 @@ export class Game {
   checkRoomClear() {
     const room = this.currentRoom;
     if (room.cleared) return;
+    if (!room.hadHostiles && !this.roomHadHostiles) return;
     const aliveEnemies = this.enemies.some(e => !e.dead);
     const bossAlive = this.boss && !this.boss.dead;
-    if (!this.roomHadHostiles) return;
     if (aliveEnemies || bossAlive) return;
     this.clearRoom(room);
   }
@@ -624,7 +635,7 @@ export class Game {
   checkDoorTransition(p) {
     if (this.switch || this.state !== 'play' || p.dead) return;
     const room = this.currentRoom;
-    if (!room.cleared && room.roomHadHostiles) return; // 未清不许走
+    if (!room.cleared && (room.sealed || room.hadHostiles)) return; // 未清空 → 封门不许走
     if (this.boss && !this.boss.dead) return;
     for (const d of room.doors) {
       const c = d.cell;

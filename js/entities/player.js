@@ -209,7 +209,10 @@ export class Player {
     if (cardinal === 'side' && aim.x < 0) anchors = anchors.map(a => ({ x: -a.x, y: a.y }));
     const eye = anchors[this.shotSide % anchors.length];
     this.shotSide++;
-    const ox = eye.x + aim.x * 4, oy = eye.y + aim.y * 4;
+    // 关键: 弹道必须穿过敌人中心。眼睛锚点在身体上方约 19px,
+    // 若整体套用会让圣泪从敌人头顶飞过(命中判定只有 r+5.5), 故垂直偏移只保留一小部分。
+    const ox = eye.x + aim.x * 6;
+    const oy = eye.y * 0.35 + aim.y * 6;
 
     for (const s of shots) {
       let dmg = this.dmg;

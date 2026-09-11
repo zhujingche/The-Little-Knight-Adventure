@@ -57,6 +57,10 @@ export class Room {
     return false;
   }
   solid(cx, cy) {
+    // 封门(有敌人)时, 门洞也被铁栅栏堵住 —— 真正挡住玩家
+    if (this.sealed) {
+      for (const d of this.doors) if (d.cell.cx === cx && d.cell.cy === cy) return true;
+    }
     if (this.isWall(cx, cy)) return true;
     const t = this.tiles[this._cell(cx, cy)];
     return t === 1;   // 尖刺非实体
