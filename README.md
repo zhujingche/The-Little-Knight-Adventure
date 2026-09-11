@@ -67,6 +67,7 @@ server.js                 零依赖静态服务器
 tools/                    headless Edge + CDP 自动化验证/截图(需要本地安装 Edge)
 shots/                    自动化试玩截图(供人眼复核画面)
 ```
+
 ## 自动化试玩验证
 
 用 headless Edge + CDP 注入真实按键“试玩”并断言，目前共 **16 个场景 / 91 项断言**，截图输出在 `shots/`。
