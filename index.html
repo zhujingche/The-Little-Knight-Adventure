@@ -6,7 +6,7 @@
 <title>小骑士的探险</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2.5">
+<link rel="stylesheet" href="css/style.css?v=2.6">
 </head>
 <body>
 <div id="stage">
@@ -37,23 +37,7 @@
       </div>
     </div>
 
-    <!-- ============ mobile touch controls ============ -->
-    <div id="touchui" class="hidden">
-      <div id="movePad">
-        <button class="fbtn" data-dir="up"><span>▲</span></button>
-        <button class="fbtn" data-dir="left"><span>◀</span></button>
-        <button class="fbtn" data-dir="down"><span>▼</span></button>
-        <button class="fbtn" data-dir="right"><span>▶</span></button>
-      </div>
-      <div id="firePad">
-        <button class="fbtn" data-dir="up"><span>▲</span></button>
-        <button class="fbtn" data-dir="left"><span>◀</span></button>
-        <button class="fbtn" data-dir="down"><span>▼</span></button>
-        <button class="fbtn" data-dir="right"><span>▶</span></button>
-      </div>
-      <button id="mapBtn">地图</button>
-      <button id="slashBtn">斩</button>
-    </div>
+    <!-- ============ mobile touch controls (见文件末尾: 固定在屏幕上, 不随游戏缩放) ============ -->
 
     <!-- ============ Screens ============ -->
     <div id="screen-menu" class="screen">
@@ -126,10 +110,28 @@
     </div>
 
     <div id="fps" class="hidden"></div>
-    <div id="buildTag">v2.5</div>
+    <div id="buildTag">v2.6</div>
+  </div>
+
+  <!-- ============ 移动端触控(固定屏幕坐标, 真实像素大小, 不受游戏缩放影响) ============ -->
+  <div id="touchui" class="hidden">
+    <div id="movePad">
+      <button class="fbtn" data-dir="up"><span>▲</span></button>
+      <button class="fbtn" data-dir="left"><span>◀</span></button>
+      <button class="fbtn" data-dir="down"><span>▼</span></button>
+      <button class="fbtn" data-dir="right"><span>▶</span></button>
+    </div>
+    <div id="firePad">
+      <button class="fbtn" data-dir="up"><span>▲</span></button>
+      <button class="fbtn" data-dir="left"><span>◀</span></button>
+      <button class="fbtn" data-dir="down"><span>▼</span></button>
+      <button class="fbtn" data-dir="right"><span>▶</span></button>
+    </div>
+    <button id="mapBtn">地图</button>
+    <button id="slashBtn">斩</button>
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=2.5"></script>
+<script type="module" src="js/main.js?v=2.6"></script>
 </body>
 </html>

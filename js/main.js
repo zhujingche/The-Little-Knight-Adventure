@@ -293,19 +293,50 @@ let fpsAcc = 0, fpsN = 0, showFps = false;
 function enableTouch() {
   const tu = $('touchui');
   tu.classList.remove('hidden');
-  // 把一套十字键绑定到指定虚拟按键
+  // 把一整套方向键绑定成“可触摸区域”: 区域内任意按下都能控向, 滑动换向, 支持斜向
   function bindPad(root, map) {
-    root.querySelectorAll('.fbtn').forEach(b => {
-      const set = (on, e) => {
-        input.vDir(map[b.dataset.dir], on);
-        b.classList.toggle('pressed', on);
-        if (e) { try { b.setPointerCapture(e.pointerId); } catch (err) { } }
-      };
-      b.addEventListener('pointerdown', (e) => { e.preventDefault(); set(true, e); });
-      b.addEventListener('pointerup', (e) => set(false, e));
-      b.addEventListener('pointercancel', (e) => set(false, e));
-      b.addEventListener('pointerleave', (e) => set(false, e));
+    const btns = {};
+    root.querySelectorAll('.fbtn').forEach(b => { btns[b.dataset.dir] = b; });
+    const dirs = ['up', 'down', 'left', 'right'];
+    const held = new Set();
+    let pid = null;
+    const apply = (want) => {
+      for (const d of dirs) {
+        const on = want.has(d);
+        if (on === held.has(d)) continue;
+        input.vDir(map[d], on);
+        if (on) held.add(d); else held.delete(d);
+        if (btns[d]) btns[d].classList.toggle('pressed', on);
+      }
+    };
+    const clear = () => apply(new Set());
+    const update = (clientX, clientY) => {
+      const r = root.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const dx = clientX - cx, dy = clientY - cy;
+      const len = Math.hypot(dx, dy);
+      const dead = r.width * 0.16;         // 中心死区
+      if (len < dead) { clear(); return; }
+      const want = new Set();
+      // 分量超过 38% 即纳入(留出斜向判定), 因此斜向 = 同时按下两个方向
+      if (dx > len * 0.38) want.add('right');
+      if (dx < -len * 0.38) want.add('left');
+      if (dy > len * 0.38) want.add('down');
+      if (dy < -len * 0.38) want.add('up');
+      apply(want);
+    };
+    root.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      pid = e.pointerId;
+      try { root.setPointerCapture(pid); } catch (err) { }
+      update(e.clientX, e.clientY);
     });
+    root.addEventListener('pointermove', (e) => { if (pid === e.pointerId) update(e.clientX, e.clientY); });
+    const end = (e) => { if (pid === e.pointerId) { pid = null; clear(); } };
+    root.addEventListener('pointerup', end);
+    root.addEventListener('pointercancel', end);
+    root.addEventListener('pointerleave', end);
+    root.addEventListener('contextmenu', (e) => e.preventDefault());
   }
   // 左下: 移动(WASD); 右下: 射击(方向键)
   bindPad($('movePad'), { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' });

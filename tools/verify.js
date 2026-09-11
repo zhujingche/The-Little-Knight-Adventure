@@ -266,19 +266,38 @@ async function main() {
       await ses('Page.navigate', { url: 'http://127.0.0.1:8123/index.html?auto=1&mobile=1' });
       for (let i = 0; i < 40; i++) { try { if ((await ev('document.readyState')) === 'complete') break; } catch (e) { } await sleep(200); }
       await sleep(1200);
-      const x0 = (await ev('window.DEBUG.diag()')).player.x;
-      // 按住左下“右”方向键 → 角色右移
-      await ev(`(()=>{const b=document.querySelector('#movePad .fbtn[data-dir="right"]');b.dispatchEvent(new PointerEvent('pointerdown',{pointerId:9,pointerType:'touch',bubbles:true}));})()`);
-      await sleep(800);
-      const x1 = (await ev('window.DEBUG.diag()')).player.x;
-      // 按住右下射击键可出泪
-      const t0 = (await ev('window.DEBUG.diag()')).stats.tears;
-      await ev(`(()=>{const b=document.querySelector('#firePad .fbtn[data-dir="right"]');b.dispatchEvent(new PointerEvent('pointerdown',{pointerId:8,pointerType:'touch',bubbles:true}));})()`);
+      const padInfo = JSON.parse(await ev(`(()=>{const r=document.getElementById('movePad').getBoundingClientRect();
+        const b=document.querySelector('#movePad .fbtn').getBoundingClientRect();
+        return JSON.stringify({w:Math.round(r.width),h:Math.round(r.height),btn:Math.round(b.width)});})()`));
+      check('触控按钮为真实屏幕像素(不再被画面缩放)', padInfo.btn >= 60 && padInfo.w >= 180, JSON.stringify(padInfo));
+      const press = (padId, dir, id, phase) => ev(`(()=>{const r=document.getElementById('${padId}').getBoundingClientRect();
+        const cx=r.left+r.width/2, cy=r.top+r.height/2, R=r.width*0.42;
+        const off={up:[0,-R],down:[0,R],left:[-R,0],right:[R,0],upRight:[R*0.72,-R*0.72]}[${JSON.stringify(dir)}];
+        document.getElementById('${padId}').dispatchEvent(new PointerEvent('${phase}',
+          {clientX:cx+off[0],clientY:cy+off[1],pointerId:${id},pointerType:'touch',bubbles:true}));})()`);
+      const p0 = (await diag()).player;
+      await press('movePad', 'right', 11, 'pointerdown');
       await sleep(700);
-      const t1 = (await ev('window.DEBUG.diag()')).stats.tears;
-      await ev(`(()=>{document.querySelector('#movePad .fbtn[data-dir="right"]').dispatchEvent(new PointerEvent('pointerup',{pointerId:9,pointerType:'touch',bubbles:true}));document.querySelector('#firePad .fbtn[data-dir="right"]').dispatchEvent(new PointerEvent('pointerup',{pointerId:8,pointerType:'touch',bubbles:true}));})()`);
-      check('左下移动键可移动玩家', Math.abs(x1 - x0) > 30, 'dx=' + (x1 - x0));
-      check('右下射击键可攻击', t1 > t0, 'tears ' + t0 + '->' + t1);
+      const p1 = (await diag()).player;
+      const litRight = await ev(`document.querySelector('#movePad .fbtn[data-dir="right"]').classList.contains('pressed')`);
+      check('按住方向键区域即向右移动', p1.x - p0.x > 30, 'dx=' + (p1.x - p0.x));
+      check('按键高亮反馈正常', litRight === true, 'pressed=' + litRight);
+      // 手指滑动到右上 → 斜向移动
+      const y1 = p1.y;
+      await press('movePad', 'upRight', 11, 'pointermove');
+      await sleep(700);
+      const p2 = (await diag()).player;
+      check('滑动可换向(斜向移动)', (p2.x - p1.x) > 15 && (y1 - p2.y) > 15, 'd=(' + (p2.x - p1.x) + ',' + (y1 - p2.y) + ')');
+      await press('movePad', 'upRight', 11, 'pointerup');
+      await sleep(300);
+      const still = await ev(`document.querySelectorAll('#movePad .fbtn.pressed').length`);
+      check('松手后方向全部释放', still === 0, 'pressedCount=' + still);
+      const t0 = (await diag()).stats.tears;
+      await press('firePad', 'right', 12, 'pointerdown');
+      await sleep(800);
+      const t1 = (await diag()).stats.tears;
+      await press('firePad', 'right', 12, 'pointerup');
+      check('射击键区域可攻击', t1 > t0, 'tears ' + t0 + '->' + t1);
     } else if (scenario === 'hp') {
       await sleep(1200);
       const redSum = await ev(`(()=>{let n=0;document.querySelectorAll('#hudHearts .hbox').forEach(c=>{const g=c.getContext('2d');const d=g.getImageData(0,0,c.width,c.height).data;for(let i=0;i<d.length;i+=4){if(d[i]>120&&d[i+1]<90&&d[i+2]<90)n++;}});return n;})()`);
