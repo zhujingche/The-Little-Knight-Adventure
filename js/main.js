@@ -3,7 +3,7 @@ import { Game } from './engine/game.js';
 import { Projectile } from './engine/projectiles.js';
 import { input } from './input.js';
 import { hud } from './ui/hud.js';
-import { initAudio, sfx, setMuted, isMuted, setMusic, tryLoadUserBgm } from './audio.js';
+import { initAudio, sfx, setMuted, isMuted, setMusic, tryLoadUserBgm, unlockUserBgm } from './audio.js';
 import { fmtTime, drawSprite } from './util.js';
 import { getKnight } from './art/player.js';
 import { monsterFrame } from './art/monsters.js';
@@ -111,7 +111,8 @@ function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = initAudio();
   if (audioUnlocked) {
-    tryLoadUserBgm();
+    unlockUserBgm();     // 关键: 必须在用户手势的同一调用栈里 play(), 否则手机浏览器会拒绝自动播放
+    tryLoadUserBgm();    // 异步: HEAD 检测音乐文件, 排播放列表
     if (appMode === 'play') setMusic(game ? game.floorIdx : 1);
   }
 }

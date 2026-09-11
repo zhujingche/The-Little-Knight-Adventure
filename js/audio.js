@@ -174,55 +174,76 @@ export function setMusic(floor, boss = false) {
   if (!AC) return;
   currentFloorKey = floor; bossMode = boss;
   if (bgmMode === 'procedural') startSequencer();   // 幂等: 已在跑则忽略
-  else startUserBgm();
+  else if (!curAudioEl) playFile(userFiles[0] || BGM_NAMES[0]);
 }
 // 调试: 当前 BGM 状态(供自动化验证)
-window.__aud = () => ({ music: bgmMode, seq: !!seqTimer, files: userBgm.length, floor: currentFloorKey, boss: bossMode });
+window.__aud = () => ({ music: bgmMode, seq: !!seqTimer, files: userFiles.length, floor: currentFloorKey, boss: bossMode });
 
-// 尝试加载用户自定义音乐(assets/bgm/bgm_1.mp3 … bgm_3.mp3)
+// ---------- 自定义音乐(文件) ----------
+// 关键: 自动播放策略要求 play() 必须发生在“用户手势的同一个调用栈”里,
+// 所以这里提供 unlockUserBgm(): 由 main 在首次 pointerdown/keydown 中同步调用。
+// 采用 <audio> 元素流式播放(边下边播), 不再整包 fetch, 手机上也几乎立刻出声。
+const BGM_NAMES = ['assets/bgm/bgm_1.mp3', 'assets/bgm/bgm_2.mp3', 'assets/bgm/bgm_3.mp3'];
+let userFiles = [];
+let userIdx = 0;
+let curAudioEl = null;
+let curUrl = '';
+
+function playFile(url) {
+  if (!AC || !url) return Promise.resolve(false);
+  if (curAudioEl) { try { curAudioEl.pause(); } catch (e) { } curAudioEl = null; }
+  const el = new Audio(url);
+  el.preload = 'auto';
+  el.volume = 1;
+  curAudioEl = el;
+  curUrl = url;
+  window.__bgm = Object.assign({}, window.__bgm || {}, { current: url, playing: false, error: null });
+  el.addEventListener('playing', () => { bgmMode = 'files'; if (window.__bgm) window.__bgm.playing = true; stopSequencer(); });
+  el.addEventListener('ended', () => {
+    if (window.__bgm) window.__bgm.playing = false;
+    curAudioEl = null;
+    const list = userFiles.length ? userFiles : [url];
+    userIdx = (userIdx + 1) % list.length;
+    playFile(list[userIdx]);
+  });
+  el.addEventListener('error', () => { if (window.__bgm) window.__bgm.error = 'file-error'; });
+  return el.play().then(() => { if (window.__bgm) window.__bgm.playing = true; return true; })
+    .catch(() => { if (window.__bgm) window.__bgm.error = 'blocked-or-missing'; return false; });
+}
+
+// 必须同步在用户手势里调用: 立刻尝试播放第一个候选音乐文件
+export function unlockUserBgm() {
+  if (!AC) return;
+  if (new URLSearchParams(location.search).get('nobgm') === '1') return;
+  userIdx = 0;
+  playFile(BGM_NAMES[0]).then((ok) => {
+    if (!ok && bgmMode !== 'files') { bgmMode = 'procedural'; startSequencer(); }
+  });
+}
+
+// 异步检测实际存在的自定义音乐(用 HEAD, 不下载整首), 用于排播放列表
 export async function tryLoadUserBgm() {
-  // 调试: ?nobgm=1 时跳过用户音乐, 强制走程序化 BGM(用于自动化验证)
   if (new URLSearchParams(location.search).get('nobgm') === '1') {
     window.__bgm = { found: false, files: [], ts: Date.now() };
     return false;
   }
-  const names = ['bgm_1.mp3', 'bgm_2.mp3', 'bgm_3.mp3'];
   const found = [];
-  for (const n of names) {
+  for (const n of BGM_NAMES) {
     try {
-      const r = await fetch('assets/bgm/' + n);
-      if (r.ok) found.push('assets/bgm/' + n);
-    } catch (e) { /* 文件缺失忽略 */ }
+      const r = await fetch(n, { method: 'HEAD' });
+      if (r.ok) found.push(n);
+    } catch (e) { /* 忽略缺失文件 */ }
   }
   if (found.length) {
-    userBgm = found;
-    bgmMode = 'files';
-    stopSequencer();
+    userFiles = found;
     console.log('[BGM] 检测到自定义音乐, 将循环播放:', found);
-    window.__bgm = { found: true, files: found.slice(), ts: Date.now() };
-    startUserBgm();
+    window.__bgm = Object.assign({}, window.__bgm || {}, { found: true, files: found.slice() });
+    // 若当前播放的不是列表第一首, 切到第一首
+    if (curUrl !== found[0]) { userIdx = 0; playFile(found[0]); }
     return true;
   }
   window.__bgm = { found: false, files: [], ts: Date.now() };
   return false;
-}
-
-let userIdx = 0;
-let curAudioEl = null;
-function startUserBgm() {
-  if (!AC) return;
-  if (!userBgm.length) { bgmMode = 'procedural'; startSequencer(); return; }
-  if (curAudioEl && !curAudioEl.paused) return;
-  const url = userBgm[userIdx % userBgm.length];
-  userIdx++;
-  const el = new Audio(url);
-  el.volume = 1;
-  curAudioEl = el;
-  window.__bgm = Object.assign({}, window.__bgm || {}, { current: url, playing: false });
-  el.addEventListener('playing', () => { if (window.__bgm) window.__bgm.playing = true; });
-  el.addEventListener('ended', () => { curAudioEl = null; if (window.__bgm) window.__bgm.playing = false; startUserBgm(); });
-  el.addEventListener('error', (e) => { if (window.__bgm) window.__bgm.error = String(e.type); curAudioEl = null; startUserBgm(); });
-  el.play().then(() => { if (window.__bgm) window.__bgm.playing = true; }).catch(() => { if (window.__bgm) window.__bgm.error = 'autoplay-blocked'; });
 }
 
 export { AC, sfxGain, musicGain };
