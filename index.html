@@ -6,7 +6,7 @@
 <title>小骑士的探险</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2.6">
+<link rel="stylesheet" href="css/style.css?v=2.7">
 </head>
 <body>
 <div id="stage">
@@ -55,7 +55,7 @@
           <p><b>J / K</b> 骨钉挥击 → 斩出青白光刃（高伤害、可穿透）</p>
           <p><b>按住鼠标左键</b> 朝光标方向射击（移动端也可点按屏幕射击）</p>
           <p><b>E / 空格</b> 开启宝箱　<b>P</b> 暂停　<b>Tab / M</b> 楼层地图</p>
-          <p>移动端：左下方向键移动，右下十字键射击，右侧「地图」「斩」按钮</p>
+          <p>移动端：左手方向区移动，右侧大「斩」键攻击（自动瞄准最近的敌人），右上「地图」</p>
           <p>清空房间敌人即可通过大门；击败每层 Boss 拾取“圣物”下到下一层！</p>
         </div>
       </div>
@@ -110,18 +110,13 @@
     </div>
 
     <div id="fps" class="hidden"></div>
-    <div id="buildTag">v2.6</div>
+    <div id="buildTag">v2.7</div>
   </div>
 
-  <!-- ============ 移动端触控(固定屏幕坐标, 真实像素大小, 不受游戏缩放影响) ============ -->
+  <!-- ============ 移动端触控(固定屏幕坐标, 真实像素大小, 不受游戏缩放影响)
+       手机端: 左手移动 + 右手「斩」(已移除四向射击盘, 由光刃斩作为主要攻击) ============ -->
   <div id="touchui" class="hidden">
     <div id="movePad">
-      <button class="fbtn" data-dir="up"><span>▲</span></button>
-      <button class="fbtn" data-dir="left"><span>◀</span></button>
-      <button class="fbtn" data-dir="down"><span>▼</span></button>
-      <button class="fbtn" data-dir="right"><span>▶</span></button>
-    </div>
-    <div id="firePad">
       <button class="fbtn" data-dir="up"><span>▲</span></button>
       <button class="fbtn" data-dir="left"><span>◀</span></button>
       <button class="fbtn" data-dir="down"><span>▼</span></button>
@@ -132,6 +127,6 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=2.6"></script>
+<script type="module" src="js/main.js?v=2.7"></script>
 </body>
 </html>

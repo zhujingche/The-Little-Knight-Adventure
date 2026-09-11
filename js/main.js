@@ -132,8 +132,13 @@ $('btnHelp').addEventListener('click', () => {
 $('mapBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); $('mapBtn').classList.add('pressed'); toggleMap(); });
 $('mapBtn').addEventListener('pointerup', () => $('mapBtn').classList.remove('pressed'));
 $('mapBtn').addEventListener('pointercancel', () => $('mapBtn').classList.remove('pressed'));
-// 手机: 骨钉斩击按钮
-$('slashBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); input.vDir('KeyJ', true); $('slashBtn').classList.add('pressed'); });
+// 手机: 骨钉斩击按钮(点按即触发, 按住则按冷却连斩)
+$('slashBtn').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  input.vDir('KeyJ', true);
+  input.queueSlash();
+  $('slashBtn').classList.add('pressed');
+});
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
   $('slashBtn').addEventListener(ev, () => { input.vDir('KeyJ', false); $('slashBtn').classList.remove('pressed'); }));
 
@@ -338,9 +343,11 @@ function enableTouch() {
     root.addEventListener('pointerleave', end);
     root.addEventListener('contextmenu', (e) => e.preventDefault());
   }
-  // 左下: 移动(WASD); 右下: 射击(方向键)
+  // 左下: 移动(WASD)。手机端已移除四向射击盘, 攻击统一由右侧「斩」键完成。
   bindPad($('movePad'), { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' });
-  bindPad($('firePad'), { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' });
+  const firePad = $('firePad');
+  if (firePad) bindPad(firePad, { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' });
+  input.touchMode = true;   // 触屏模式: 斩击自动瞄准最近的敌人
 
   // 防误触菜单
   window.addEventListener('contextmenu', (e) => e.preventDefault());

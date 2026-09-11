@@ -6,6 +6,8 @@ class Input {
     this.joy = { x: 0, y: 0, active: false };
     this.pressed = new Set();   // 本帧按下(用于交互等)
     this.eaten = false;
+    this.touchMode = false;     // 触屏模式(启用虚拟按键时置 true)
+    this.slashBuffer = 0;       // 斩击输入缓冲(秒), 保证快速点按也能触发
     this._bind();
   }
   _bind() {
@@ -13,6 +15,7 @@ class Input {
       if (e.repeat) return;
       if (this._block(e)) { e.preventDefault(); }
       if (this._block(e)) this.pressed.add(e.code);
+      if (e.code === 'KeyJ' || e.code === 'KeyK') this.queueSlash();   // 快速点按也生效
       this.keys.add(e.code);
     });
     window.addEventListener('keyup', (e) => { this.keys.delete(e.code); });
@@ -24,6 +27,7 @@ class Input {
     return c.startsWith('Arrow') || c === 'Space' || c === 'KeyP' || c === 'KeyE' || c === 'Tab';
   }
   down(code) { return this.keys.has(code) || this.vKeys.has(code); }
+  queueSlash() { this.slashBuffer = 0.18; }   // 点按斩击: 缓冲 0.18s
   // 鼠标瞄准(世界坐标由 main 换算后写入)
   setMouse(x, y) { this.mouse = { x, y, down: this.mouse ? this.mouse.down : false }; }
   setMouseDown(d) { if (this.mouse) this.mouse.down = d; }

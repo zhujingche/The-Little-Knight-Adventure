@@ -135,17 +135,40 @@ export class Player {
       this.face = { x: this.aim.x, y: this.aim.y };
       this.shootPose = 1;
     }
-    // ---- 骨钉挥击: 斩出光刃(J / K, 手机“斩”键) ----
-    if (input.down('KeyJ') && this.slashCd <= 0) {
+    // ---- 骨钉挥击: 斩出光刃(J / K, 手机“斩”键; 支持点按缓冲) ----
+    if (input.slashBuffer > 0) input.slashBuffer = Math.max(0, input.slashBuffer - dt);
+    const wantSlash = input.down('KeyJ') || input.slashBuffer > 0;
+    if (wantSlash && this.slashCd <= 0) {
       let dir = this.aim;
       if (!dir) {
-        const fx = this.face ? this.face.x : 0, fy = this.face ? this.face.y : 1;
-        const fl = Math.hypot(fx, fy) || 1;
-        dir = { x: fx / fl, y: fy / fl };
+        // 触屏(手机没有方向射击): 自动对准最近的敌人, 更顺手
+        if (input.touchMode) {
+          let best = null, bd = 230 * 230;
+          for (const e of game.enemies) {
+            if (e.dead) continue;
+            const d2 = (e.x - this.x) ** 2 + (e.y - this.y) ** 2;
+            if (d2 < bd) { bd = d2; best = e; }
+          }
+          if (!best && game.boss && !game.boss.dead) {
+            const d2 = (game.boss.x - this.x) ** 2 + (game.boss.y - this.y) ** 2;
+            if (d2 < bd) { bd = d2; best = game.boss; }
+          }
+          if (best) {
+            const dx = best.x - this.x, dy = (best.y + 4) - (this.y - 4);
+            const l = Math.hypot(dx, dy) || 1;
+            dir = { x: dx / l, y: dy / l };
+          }
+        }
+        if (!dir) {
+          const fx = this.face ? this.face.x : 0, fy = this.face ? this.face.y : 1;
+          const fl = Math.hypot(fx, fy) || 1;
+          dir = { x: fx / fl, y: fy / fl };
+        }
       }
       this.slash(game, dir);
       this.slashCd = 0.5;
       this.slashPose = 1;
+      input.slashBuffer = 0;      // 消耗掉缓冲, 避免连续触发
     }
     // 门检测
     game.checkDoorTransition(this);

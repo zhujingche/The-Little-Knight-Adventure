@@ -53,30 +53,24 @@ body { font-family: 'Press Start 2P', 'Courier New', Consolas, monospace; color:
 #itemFlashIcon { width: 72px; height: 72px; image-rendering: pixelated; margin: 0 auto 8px; }
 
 /* ===== 移动端触控 =====
-   固定屏幕坐标(position:fixed) + 真实像素尺寸, 不再随 960x640 游戏画面缩放。
-   两个十字键各自是一个 200x200 的“可触摸区域”, 区域内任意按下都能控方向, 滑动可换向, 支持斜向。 */
+   固定屏幕坐标(position:fixed) + 真实像素尺寸, 不随 960x640 游戏画面缩放。
+   左手: 200x200 可触摸移动区(整区可按/滑动换向/斜向); 右手: 大号「斩」键(主要攻击)。 */
 #touchui { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
-#movePad, #firePad {
+#movePad {
   position: absolute; width: 200px; height: 200px;
   pointer-events: auto; touch-action: none;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,.05), rgba(0,0,0,.12) 70%, rgba(0,0,0,0) 72%);
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
 }
-#movePad { left: calc(10px + env(safe-area-inset-left, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
-#firePad { right: calc(10px + env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
-#movePad .fbtn, #firePad .fbtn {
+#movePad .fbtn {
   position: absolute; width: 68px; height: 68px; border-radius: 50%;
   font-size: 24px; display: flex; align-items: center; justify-content: center;
   touch-action: none; pointer-events: none;   /* 事件由整个 pad 处理, 按钮只负责显示 */
-}
-#movePad .fbtn {
   background: rgba(12,24,46,.62); border: 3px solid rgba(150,195,255,.5); color: #d7e8ff;
 }
-#firePad .fbtn {
-  background: rgba(24,16,10,.62); border: 3px solid rgba(255,210,150,.5); color: #ffe9c0;
-}
 #movePad .fbtn.pressed { background: rgba(90,160,255,.75); border-color: #eaf4ff; color: #fff; }
-#firePad .fbtn.pressed { background: rgba(255,130,60,.75); border-color: #fff0d0; color: #fff; }
 .fbtn[data-dir="up"] { left: 66px; top: 2px; }
 .fbtn[data-dir="left"] { left: 2px; top: 66px; }
 .fbtn[data-dir="down"] { left: 66px; top: 130px; }
@@ -124,26 +118,27 @@ body { font-family: 'Press Start 2P', 'Courier New', Consolas, monospace; color:
 #minimapInfo { margin-top: 4px; font-size: 10px; color: #9fb2c6; text-shadow: 1px 1px 0 #000; }
 #minimapInfo .tag { padding: 1px 4px; border: 1px solid #2c3644; margin-right: 6px; }
 
-/* 手机地图按钮(屏幕右下、射击键上方, 避开顶部 HUD) */
+/* 手机地图按钮(屏幕右侧、斩键上方) */
 #mapBtn {
   position: absolute; pointer-events: auto;
-  right: calc(24px + env(safe-area-inset-right, 0px));
-  bottom: calc(238px + env(safe-area-inset-bottom, 0px));
+  right: calc(34px + env(safe-area-inset-right, 0px));
+  bottom: calc(180px + env(safe-area-inset-bottom, 0px));
   padding: 12px 18px;
   font-family: inherit; font-size: 15px; color: #d7e8ff; cursor: pointer;
   background: rgba(12,24,46,.7); border: 3px solid rgba(150,195,255,.5); border-radius: 12px;
 }
 #mapBtn.pressed { background: rgba(90,160,255,.75); }
 
-/* 手机骨钉斩击按钮(火焰键盘左侧, 大按钮) */
+/* 手机骨钉斩击键: 右手拇指主攻击位(右下角, 大按钮) */
 #slashBtn {
   position: absolute; pointer-events: auto;
-  right: calc(230px + env(safe-area-inset-right, 0px));
-  bottom: calc(30px + env(safe-area-inset-bottom, 0px));
-  width: 88px; height: 88px; border-radius: 50%;
-  font-family: inherit; font-size: 26px; color: #fff3d0; cursor: pointer;
-  background: radial-gradient(circle at 35% 30%, rgba(255,235,180,.4), rgba(150,110,30,.6));
-  border: 3px solid rgba(255,220,140,.65);
+  right: calc(30px + env(safe-area-inset-right, 0px));
+  bottom: calc(34px + env(safe-area-inset-bottom, 0px));
+  width: 124px; height: 124px; border-radius: 50%;
+  font-family: inherit; font-size: 38px; color: #fff3d0; cursor: pointer;
+  background: radial-gradient(circle at 35% 30%, rgba(255,235,180,.42), rgba(150,110,30,.62));
+  border: 4px solid rgba(255,220,140,.7);
+  box-shadow: 0 0 22px rgba(255,200,90,.25);
 }
 #slashBtn:active, #slashBtn.pressed { background: radial-gradient(circle at 35% 30%, #fff3c0, #c08a20); color: #32220a; }
 

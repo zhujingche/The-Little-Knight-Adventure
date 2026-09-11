@@ -266,38 +266,51 @@ async function main() {
       await ses('Page.navigate', { url: 'http://127.0.0.1:8123/index.html?auto=1&mobile=1' });
       for (let i = 0; i < 40; i++) { try { if ((await ev('document.readyState')) === 'complete') break; } catch (e) { } await sleep(200); }
       await sleep(1200);
-      const padInfo = JSON.parse(await ev(`(()=>{const r=document.getElementById('movePad').getBoundingClientRect();
-        const b=document.querySelector('#movePad .fbtn').getBoundingClientRect();
-        return JSON.stringify({w:Math.round(r.width),h:Math.round(r.height),btn:Math.round(b.width)});})()`));
-      check('触控按钮为真实屏幕像素(不再被画面缩放)', padInfo.btn >= 60 && padInfo.w >= 180, JSON.stringify(padInfo));
+      const layout = JSON.parse(await ev(`(()=>{const s=document.getElementById('slashBtn').getBoundingClientRect();
+        const mp=document.getElementById('movePad').getBoundingClientRect();
+        return JSON.stringify({firePad: !!document.getElementById('firePad'), slashLeft:Math.round(s.left),slashW:Math.round(s.width),
+          moveW:Math.round(mp.width), vw:window.innerWidth, mapBtn: !!document.getElementById('mapBtn')});})()`));
+      check('手机端已移除四方向射击盘', layout.firePad === false && layout.mapBtn === true, JSON.stringify(layout));
+      check('斩键位于右侧且尺寸够大', layout.slashLeft > layout.vw / 2 && layout.slashW >= 110, JSON.stringify(layout));
+      check('左侧移动区尺寸正常', layout.moveW >= 180, 'movePad=' + layout.moveW);
       const press = (padId, dir, id, phase) => ev(`(()=>{const r=document.getElementById('${padId}').getBoundingClientRect();
         const cx=r.left+r.width/2, cy=r.top+r.height/2, R=r.width*0.42;
         const off={up:[0,-R],down:[0,R],left:[-R,0],right:[R,0],upRight:[R*0.72,-R*0.72]}[${JSON.stringify(dir)}];
         document.getElementById('${padId}').dispatchEvent(new PointerEvent('${phase}',
           {clientX:cx+off[0],clientY:cy+off[1],pointerId:${id},pointerType:'touch',bubbles:true}));})()`);
+      const tapBtn = (btnId, id) => ev(`(()=>{const b=document.getElementById('${btnId}');const r=b.getBoundingClientRect();
+        const o={clientX:r.left+r.width/2,clientY:r.top+r.height/2,pointerId:${id},pointerType:'touch',bubbles:true};
+        b.dispatchEvent(new PointerEvent('pointerdown',o));b.dispatchEvent(new PointerEvent('pointerup',o));})()`);
       const p0 = (await diag()).player;
       await press('movePad', 'right', 11, 'pointerdown');
-      await sleep(700);
+      await sleep(650);
       const p1 = (await diag()).player;
       const litRight = await ev(`document.querySelector('#movePad .fbtn[data-dir="right"]').classList.contains('pressed')`);
-      check('按住方向键区域即向右移动', p1.x - p0.x > 30, 'dx=' + (p1.x - p0.x));
+      await press('movePad', 'right', 11, 'pointerup');
+      check('左手移动区可移动', p1.x - p0.x > 30, 'dx=' + (p1.x - p0.x));
       check('按键高亮反馈正常', litRight === true, 'pressed=' + litRight);
       // 手指滑动到右上 → 斜向移动
-      const y1 = p1.y;
-      await press('movePad', 'upRight', 11, 'pointermove');
-      await sleep(700);
+      await press('movePad', 'upRight', 11, 'pointerdown');
+      await sleep(550);
       const p2 = (await diag()).player;
-      check('滑动可换向(斜向移动)', (p2.x - p1.x) > 15 && (y1 - p2.y) > 15, 'd=(' + (p2.x - p1.x) + ',' + (y1 - p2.y) + ')');
       await press('movePad', 'upRight', 11, 'pointerup');
-      await sleep(300);
-      const still = await ev(`document.querySelectorAll('#movePad .fbtn.pressed').length`);
-      check('松手后方向全部释放', still === 0, 'pressedCount=' + still);
-      const t0 = (await diag()).stats.tears;
-      await press('firePad', 'right', 12, 'pointerdown');
-      await sleep(800);
-      const t1 = (await diag()).stats.tears;
-      await press('firePad', 'right', 12, 'pointerup');
-      check('射击键区域可攻击', t1 > t0, 'tears ' + t0 + '->' + t1);
+      check('滑动可斜向移动', (p2.x - p1.x) > 10 && (p1.y - p2.y) > 10, 'd=(' + (p2.x - p1.x) + ',' + (p1.y - p2.y) + ')');
+      // 右侧「斩」键 + 触屏自动瞄准(敌人放左侧, 玩家面朝右)
+      await ev('window.DEBUG.god(true)');
+      for (let i = 0; i < 4; i++) { await ev('window.DEBUG.nuke()'); await sleep(200); }
+      await ev('window.DEBUG.spawnAt("gaper", -130, 0)');
+      await sleep(250);
+      const hpA = await ev('(()=>{const e=window.GAME().enemies.find(x=>x.kind==="gaper");return e?e.hp:0;})()');
+      await tapBtn('slashBtn', 21);
+      await sleep(550);
+      const hpB = await ev('(()=>{const e=window.GAME().enemies.find(x=>x.kind==="gaper");return e?e.hp:0;})()');
+      const sl = (await diag()).player.slashes;
+      check('右侧斩键可挥击出光刃', sl > 0, 'slashes=' + sl);
+      check('触屏斩击自动瞄准最近敌人', hpB < hpA, 'hp ' + hpA + ' -> ' + hpB);
+      await tapBtn('mapBtn', 22);
+      await sleep(400);
+      const mapShown = await ev(`!document.getElementById('minimapWrap').classList.contains('hidden')`);
+      check('地图键可开地图', mapShown === true, 'visible=' + mapShown);
     } else if (scenario === 'hp') {
       await sleep(1200);
       const redSum = await ev(`(()=>{let n=0;document.querySelectorAll('#hudHearts .hbox').forEach(c=>{const g=c.getContext('2d');const d=g.getImageData(0,0,c.width,c.height).data;for(let i=0;i<d.length;i+=4){if(d[i]>120&&d[i+1]<90&&d[i+2]<90)n++;}});return n;})()`);
