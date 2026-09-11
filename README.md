@@ -38,8 +38,6 @@ node server.js
 
 
 ```
-游戏启动时会自动检测并按 1 → 2 → 3 → 1… 循环播放（替换占位 BGM）。
-详见 `assets/bgm/README.txt`。
 ## 技术结构（零依赖，原生 ES Modules + Canvas 2D）
 ```
 index.html                入口
