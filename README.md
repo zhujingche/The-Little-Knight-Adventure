@@ -15,6 +15,12 @@ node server.js
 
 > 请不要直接双击 index.html（file:// 下部分浏览器无法加载自定义背景音乐）。
 
+## 背景音乐
+
+默认播放内置的程序化氛围 BGM（随楼层/Boss 切换）。想换成自己的歌：把音频文件放进 `assets/bgm/`，命名为 `bgm_1.mp3`、`bgm_2.mp3`、`bgm_3.mp3`（支持 mp3 / ogg / wav），游戏会按 1→2→3→1… 的顺序循环播放。
+
+> 请使用你拥有授权的音频文件；本仓库不包含任何版权音乐。
+
 ## 操作方式
 
 | 输入 | 作用 |
@@ -61,6 +67,15 @@ server.js                 零依赖静态服务器
 tools/                    headless Edge + CDP 自动化验证/截图(需要本地安装 Edge)
 shots/                    自动化试玩截图(供人眼复核画面)
 ```
+## 自动化试玩验证
+
+用 headless Edge + CDP 注入真实按键“试玩”并断言，目前共 **16 个场景 / 91 项断言**，截图输出在 `shots/`。
+
+```bash
+node server.js              # 先启动本地服务器
+node tools/verify.js p1     # 场景: p1~p9 / slash / touch / map / reentry / aimhit / hazard / shop
+```
+
 ## 已知说明
 
 - 主角为原创角色设定（小骑士），视觉采用黑色粗描边+高饱和低多边形像素风致敬以撒，但素材全部为代码现绘，无任何原作素材。
