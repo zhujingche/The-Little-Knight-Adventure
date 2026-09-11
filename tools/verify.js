@@ -307,6 +307,33 @@ async function main() {
       const sl = (await diag()).player.slashes;
       check('右侧斩键可挥击出光刃', sl > 0, 'slashes=' + sl);
       check('触屏斩击自动瞄准最近敌人', hpB < hpA, 'hp ' + hpA + ' -> ' + hpB);
+      // 弹反敌弹: 先清场让斩击方向=面朝方向(右), 再把敌弹放在右前方
+      for (let i = 0; i < 4; i++) { await ev('window.DEBUG.nuke()'); await sleep(180); }
+      await press('movePad', 'right', 27, 'pointerdown');
+      await sleep(300);
+      await press('movePad', 'right', 27, 'pointerup');
+      await sleep(200);
+      await ev('window.DEBUG.enemyTear(70, 0, 40)');
+      await sleep(120);
+      const eb = await ev('window.GAME().eTears.length');
+      await tapBtn('slashBtn', 24);
+      await sleep(350);
+      const ea = await ev('window.GAME().eTears.length');
+      check('斩击可弹反/斩落敌弹', eb > 0 && ea < eb, 'eTears ' + eb + ' -> ' + ea);
+      // 暂停键
+      await tapBtn('pauseBtn', 25);
+      await sleep(400);
+      const pausedUI = await ev(`!document.getElementById('screen-pause').classList.contains('hidden')`);
+      check('手机暂停键可暂停', pausedUI === true, 'paused=' + pausedUI);
+      await ev(`document.getElementById('btnResume').click()`);
+      await sleep(350);
+      const resumedUI = await ev(`document.getElementById('screen-pause').classList.contains('hidden')`);
+      check('暂停后可继续', resumedUI === true, 'resumed=' + resumedUI);
+      // 斩击冷却环
+      await tapBtn('slashBtn', 26);
+      await sleep(120);
+      const ring = await ev(`(()=>{const el=document.getElementById('slashCd');return el?String(el.style.background):'';})()`);
+      check('斩键带冷却指示环', /conic-gradient/.test(ring), ring.slice(0, 48));
       await tapBtn('mapBtn', 22);
       await sleep(400);
       const mapShown = await ev(`!document.getElementById('minimapWrap').classList.contains('hidden')`);

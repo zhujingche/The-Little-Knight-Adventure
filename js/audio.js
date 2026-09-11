@@ -76,6 +76,7 @@ const sfxDefs = {
   hit: () => { noise(0.08, { vol: 0.22, filter: 900 }); tone(180, 0.09, { type: 'square', vol: 0.14, slide: -60 }); },
   splash: () => { noise(0.05, { vol: 0.13, filter: 2600 }); tone(1050, 0.05, { type: 'triangle', vol: 0.08, slide: -420 }); },
   slash: () => { noise(0.14, { vol: 0.18, filter: 2400, slide: -1500 }); tone(940, 0.1, { type: 'triangle', vol: 0.13, slide: 520 }); },
+  parry: () => { tone(1760, 0.09, { type: 'square', vol: 0.14, slide: 420 }); tone(2640, 0.07, { type: 'triangle', vol: 0.1, delay: 0.03 }); noise(0.05, { vol: 0.1, filter: 5200 }); },
   death: () => { tone(230, 0.5, { type: 'sawtooth', vol: 0.2, slide: -170 }); tone(450, 0.42, { type: 'triangle', vol: 0.15, slide: -320, delay: 0.05 }); noise(0.42, { vol: 0.2, filter: 480, slide: -320 }); },
   die: () => { noise(0.16, { vol: 0.25, filter: 700, slide: -500 }); tone(300, 0.16, { type: 'sawtooth', vol: 0.12, slide: -220 }); },
   hurt: () => { tone(130, 0.22, { type: 'square', vol: 0.26, slide: -80 }); noise(0.12, { vol: 0.2, filter: 600 }); },

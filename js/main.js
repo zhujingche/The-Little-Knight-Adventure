@@ -1,5 +1,6 @@
 // main.js — 启动/主循环/界面/移动端控制
 import { Game } from './engine/game.js';
+import { Projectile } from './engine/projectiles.js';
 import { input } from './input.js';
 import { hud } from './ui/hud.js';
 import { initAudio, sfx, setMuted, isMuted, setMusic, tryLoadUserBgm } from './audio.js';
@@ -29,6 +30,23 @@ function toggleMap() {
   mapVisible = !mapVisible;
   hud.showMinimap(mapVisible);
   sfx('ui');
+}
+function togglePause() {
+  if (!game || appMode !== 'play' || gameOver) return;
+  game.paused = !game.paused;
+  showScreen(game.paused ? 'pause' : null);
+  sfx('ui');
+}
+// 斩击冷却环(对应「斩」键内部的扇形遮罩)
+let slashRingLast = -1;
+function updateSlashRing() {
+  const el = $('slashCd');
+  if (!el || !game || !game.player) return;
+  const p = Math.max(0, Math.min(1, (game.player.slashCd || 0) / 0.5));
+  const pct = Math.round((p * 100) / 4) * 4;
+  if (pct === slashRingLast) return;
+  slashRingLast = pct;
+  el.style.background = 'conic-gradient(rgba(0,0,0,.62) ' + pct + '%, rgba(0,0,0,0) 0)';
 }
 
 // ---------- 缩放适配(2倍超采样抗糊) ----------
@@ -130,6 +148,10 @@ $('btnHelp').addEventListener('click', () => {
 });
 // 手机: 地图按钮
 $('mapBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); $('mapBtn').classList.add('pressed'); toggleMap(); });
+// 手机: 暂停键
+$('pauseBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); $('pauseBtn').classList.add('pressed'); togglePause(); });
+$('pauseBtn').addEventListener('pointerup', () => $('pauseBtn').classList.remove('pressed'));
+$('pauseBtn').addEventListener('pointercancel', () => $('pauseBtn').classList.remove('pressed'));
 $('mapBtn').addEventListener('pointerup', () => $('mapBtn').classList.remove('pressed'));
 $('mapBtn').addEventListener('pointercancel', () => $('mapBtn').classList.remove('pressed'));
 // 手机: 骨钉斩击按钮(点按即触发, 按住则按冷却连斩)
@@ -256,17 +278,14 @@ function loop(t) {
   if (appMode === 'menu') drawMenu();
 
   if (game && appMode === 'play') {
-    // 暂停键
-    if (input.pause() && !gameOver) {
-      game.paused = !game.paused;
-      showScreen(game.paused ? 'pause' : null);
-      sfx('ui');
-    }
+    // 暂停(键盘 P/Esc 或屏幕暂停键)
+    if (input.pause() && !gameOver) togglePause();
     if (input.pressedCode('KeyR') && gameOver) { startGame(); }
     // 楼层地图(Tab / M)
     if (input.pressedCode('Tab') || input.pressedCode('KeyM')) toggleMap();
     if (!game.paused) game.tick(dt);
     game.draw();
+    updateSlashRing();
     if (mapVisible) {
       game.drawMinimap(mmg);
       const visited = game.rooms.filter(r => r.visited).length;
@@ -394,6 +413,17 @@ window.DEBUG = {
   spawnAt(kind, dx, dy) {
     if (!game || !game.player) return;
     game.spawnEnemyAt(kind, game.player.x + (dx | 0), game.player.y + (dy | 0));
+  },
+  // 调试: 在玩家附近生成一颗朝玩家飞来的敌弹(用于测试斩击弹反)
+  enemyTear(dx = 70, dy = 0, speed = 140) {
+    if (!game || !game.player) return;
+    const p = game.player;
+    const x = p.x + dx, y = p.y - 4 + dy;
+    const a = Math.atan2((p.y - 4) - y, p.x - x);
+    game.eTears.push(new Projectile({
+      x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+      dmg: 1, radius: 4.6, range: 600, enemy: true, color: 'R',
+    }));
   },
   setFloor(n) {
     if (!game) return;

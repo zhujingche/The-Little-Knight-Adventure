@@ -129,6 +129,20 @@ body { font-family: 'Press Start 2P', 'Courier New', Consolas, monospace; color:
 }
 #mapBtn.pressed { background: rgba(90,160,255,.75); }
 
+/* 手机暂停键(顶部居中, 不挡血条/层数) */
+#pauseBtn {
+  position: absolute; pointer-events: auto;
+  left: 50%; transform: translateX(-50%);
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  width: 54px; height: 54px; border-radius: 14px;
+  font-family: inherit; font-size: 22px; color: #dfe8f2; cursor: pointer;
+  background: rgba(10,14,22,.7); border: 3px solid rgba(150,175,205,.45);
+}
+#pauseBtn.pressed { background: rgba(120,160,220,.75); }
+
+/* 斩击键内部的冷却指示环 */
+#slashCd { position: absolute; inset: -2px; border-radius: 50%; pointer-events: none; }
+
 /* 手机骨钉斩击键: 右手拇指主攻击位(右下角, 大按钮) */
 #slashBtn {
   position: absolute; pointer-events: auto;

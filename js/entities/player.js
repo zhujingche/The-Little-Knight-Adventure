@@ -190,6 +190,8 @@ export class Player {
     game.pTears.push(p);
     this.slashes++;
     this.face = { x: aim.x, y: aim.y };
+    // 挥斩瞬间弹反身前的敌弹
+    game.parryAt(this.x, this.y - 4, ang);
     // 挥击前冲一点(手感)
     this.kb.x += aim.x * 230;
     this.kb.y += aim.y * 230;

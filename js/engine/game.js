@@ -321,6 +321,16 @@ export class Game {
         t.target = best;
       }
       t.update(dt);
+      // 光刃飞行中可斩落敌弹(弹反)
+      if (t.blade && this.eTears.length) {
+        for (let k = this.eTears.length - 1; k >= 0; k--) {
+          const et = this.eTears[k];
+          if (Math.hypot(et.x - t.x, et.y - t.y) < t.radius + 10) {
+            this.parts.sparkle(et.x, et.y, '#dff4ff', 4);
+            this.eTears.splice(k, 1);
+          }
+        }
+      }
       // 墙碰撞
       const cx = Math.floor(t.x / T), cy = Math.floor(t.y / T);
       if (!t.spectral && room.solid(cx, cy)) {
@@ -391,6 +401,27 @@ export class Game {
       sfx('splash');
       this.hitStop = Math.min(0.07, this.hitStop + 0.03);
     }
+  }
+
+  // 斩击弹反: 清除以 (x,y) 为圆心、朝向 ang 的扇形范围内所有敌弹
+  parryAt(x, y, ang, radius = 82, arc = 1.25) {
+    if (!this.eTears.length) return 0;
+    let n = 0;
+    for (let i = this.eTears.length - 1; i >= 0; i--) {
+      const t = this.eTears[i];
+      const dx = t.x - x, dy = t.y - y;
+      if (dx * dx + dy * dy > radius * radius) continue;
+      let da = Math.atan2(dy, dx) - ang;
+      while (da > Math.PI) da -= Math.PI * 2;
+      while (da < -Math.PI) da += Math.PI * 2;
+      if (Math.abs(da) > arc) continue;
+      this.eTears.splice(i, 1);
+      this.parts.sparkle(t.x, t.y, '#e8f7ff', 5);
+      this.parts.ring(t.x, t.y, '#bfeaff', 8);
+      n++;
+    }
+    if (n) { sfx('parry'); this.shake(1.6); }
+    return n;
   }
 
   splitTear(t) {
