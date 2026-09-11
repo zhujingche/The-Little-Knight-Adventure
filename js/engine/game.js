@@ -97,6 +97,7 @@ export class Game {
     this.currentRoom = room;
     room.ensureBg();
     room.entryVisited++;
+    room.visited = true;
     // 敌人生成
     this.enemies = [];
     this.boss = null;
@@ -822,6 +823,88 @@ export class Game {
   drawIdle(g) {
     g.fillStyle = '#0a0806';
     g.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+
+  // ---------------- 楼层小地图 ----------------
+  knownRoom(i) {
+    const r = this.rooms[i];
+    if (!r) return false;
+    if (r.visited) return true;
+    // 已探索房间的相邻房间: 显示为“已知轮廓”
+    for (const d of r.doors) {
+      const nb = this.rooms[d.to];
+      if (nb && nb.visited) return true;
+    }
+    return false;
+  }
+
+  drawMinimap(g) {
+    if (!this.floor) return;
+    const W = g.canvas.width, H = g.canvas.height;
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = '#0a0d12';
+    g.fillRect(0, 0, W, H);
+    const nodes = this.floor.nodes;
+    let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+    for (const n of nodes) {
+      minX = Math.min(minX, n.gx); maxX = Math.max(maxX, n.gx);
+      minY = Math.min(minY, n.gy); maxY = Math.max(maxY, n.gy);
+    }
+    const cols = maxX - minX + 1, rows = maxY - minY + 1;
+    const pad = 10;
+    const cw = (W - pad * 2) / cols, ch = (H - pad * 2) / rows;
+    const size = Math.max(9, Math.min(cw, ch) - 7);
+    const pos = (n) => ({ x: pad + (n.gx - minX) * cw + cw / 2, y: pad + (n.gy - minY) * ch + ch / 2 });
+
+    // 门连线
+    g.strokeStyle = '#2b3542';
+    g.lineWidth = 2;
+    for (let i = 0; i < nodes.length; i++) {
+      if (!this.knownRoom(i)) continue;
+      const p = pos(nodes[i]);
+      for (const d of this.rooms[i].doors) {
+        if (!this.knownRoom(d.to)) continue;
+        const q = pos(nodes[d.to]);
+        g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(q.x, q.y); g.stroke();
+      }
+    }
+    // 房间格
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i], r = this.rooms[i];
+      const p = pos(n);
+      const x = p.x - size / 2, y = p.y - size / 2;
+      if (!this.knownRoom(i)) { continue; }   // 未探索: 不显示(保留迷雾)
+      let col = '#3d4a5c';
+      if (n.role === 'start') col = '#37756f';
+      else if (n.role === 'treasure') col = '#8a6a24';
+      else if (n.role === 'boss') col = '#7d2b2b';
+      g.fillStyle = r.visited ? col : '#1d232c';
+      g.fillRect(x, y, size, size);
+      g.strokeStyle = r.visited ? '#8195aa' : '#39434f';
+      g.lineWidth = 1;
+      g.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
+      if (r.visited) {
+        g.fillStyle = '#eaf1f8';
+        g.font = 'bold 11px monospace';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        if (n.role === 'boss') g.fillText('☠', p.x, p.y + 1);
+        else if (n.role === 'treasure') g.fillText('▣', p.x, p.y + 1);
+        else if (n.role === 'start') g.fillText('⌂', p.x, p.y + 1);
+        else if (r.cleared) g.fillText('·', p.x, p.y + 1);
+      }
+      if (i === this.currentRoomIdx) {
+        g.strokeStyle = '#ffe9a0';
+        g.lineWidth = 2;
+        g.strokeRect(x - 1.5, y - 1.5, size + 3, size + 3);
+      }
+      if (r.stairs && r.visited) {
+        g.fillStyle = '#8ff0ff';
+        g.font = 'bold 10px monospace';
+        g.textAlign = 'center'; g.textBaseline = 'top';
+        g.fillText('▼', p.x, y + size + 1);
+      }
+    }
   }
 
   drawLights(g, room) {

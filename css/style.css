@@ -105,4 +105,22 @@ body { font-family: 'Press Start 2P', 'Courier New', Consolas, monospace; color:
 #fps { position: absolute; right: 6px; top: 6px; font-size: 10px; color: #6f6; background: #000; padding: 2px 4px; z-index: 40; }
 #buildTag { position: absolute; left: 8px; bottom: 8px; font-size: 10px; color: #556; background: rgba(0,0,0,.5); padding: 2px 6px; z-index: 40; border: 1px solid #223; }
 
+/* 楼层地图 */
+#minimapWrap {
+  position: absolute; right: 12px; top: 52px; padding: 8px 8px 4px;
+  background: rgba(8,10,14,.84); border: 2px solid #3a4553; z-index: 9;
+  box-shadow: 0 6px 22px rgba(0,0,0,.6);
+}
+#minimapCanvas { display: block; image-rendering: pixelated; }
+#minimapInfo { margin-top: 4px; font-size: 10px; color: #9fb2c6; text-shadow: 1px 1px 0 #000; }
+#minimapInfo .tag { padding: 1px 4px; border: 1px solid #2c3644; margin-right: 6px; }
+
+/* 手机地图按钮 */
+#mapBtn {
+  position: absolute; right: 20px; bottom: 202px; padding: 8px 12px;
+  font-family: inherit; font-size: 12px; color: #d7e8ff; cursor: pointer;
+  background: rgba(12,24,46,.6); border: 3px solid rgba(150,195,255,.45); border-radius: 10px;
+}
+#mapBtn.pressed { background: rgba(90,160,255,.6); }
+
 canvas { touch-action: none; }

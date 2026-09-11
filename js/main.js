@@ -20,6 +20,17 @@ let gameOver = false;
 let lastT = performance.now();
 const query = new URLSearchParams(location.search);
 
+// ---------- 楼层小地图 ----------
+const minimapCanvas = $('minimapCanvas');
+const mmg = minimapCanvas.getContext('2d');
+let mapVisible = false;
+function toggleMap() {
+  if (!game || appMode !== 'play' || gameOver) return;
+  mapVisible = !mapVisible;
+  hud.showMinimap(mapVisible);
+  sfx('ui');
+}
+
 // ---------- 缩放适配(2倍超采样抗糊) ----------
 const RENDER_SCALE = 2; // 画布内部超采样倍数
 function fit() {
@@ -100,6 +111,8 @@ function toMenu() {
   game = null;
   appMode = 'menu';
   gameOver = false;
+  mapVisible = false;
+  hud.showMinimap(false);
   hud.showGameUI(false);
   showScreen('menu');
 }
@@ -115,6 +128,10 @@ $('btnHelp').addEventListener('click', () => {
   $('helpBox').classList.toggle('hidden');
   sfx('ui');
 });
+// 手机: 地图按钮
+$('mapBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); $('mapBtn').classList.add('pressed'); toggleMap(); });
+$('mapBtn').addEventListener('pointerup', () => $('mapBtn').classList.remove('pressed'));
+$('mapBtn').addEventListener('pointercancel', () => $('mapBtn').classList.remove('pressed'));
 
 function startGame() {
   if (!game) game = new Game(canvas);
@@ -124,6 +141,8 @@ function startGame() {
   showScreen(null);
   appMode = 'play';
   game.paused = false;
+  mapVisible = false;
+  hud.showMinimap(false);
   game.startRun();
   // 把焦点让给画布, 保证键盘(方向键)立刻生效
   try { canvas.focus(); } catch (e) { }
@@ -235,8 +254,16 @@ function loop(t) {
       sfx('ui');
     }
     if (input.pressedCode('KeyR') && gameOver) { startGame(); }
+    // 楼层地图(Tab / M)
+    if (input.pressedCode('Tab') || input.pressedCode('KeyM')) toggleMap();
     if (!game.paused) game.tick(dt);
     game.draw();
+    if (mapVisible) {
+      game.drawMinimap(mmg);
+      const visited = game.rooms.filter(r => r.visited).length;
+      hud.setMinimapInfo('<span class="tag">已探索 ' + visited + '/' + game.rooms.length + '</span>'
+        + '<span class="tag">第 ' + game.floorIdx + ' 层</span>');
+    }
     // 结束检测
     if (!gameOver && game.state === 'dead') showDeath();
     if (!gameOver && game.state === 'win') showWin();

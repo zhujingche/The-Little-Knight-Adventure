@@ -90,5 +90,13 @@ export const hud = {
   showGameUI(show) {
     $('hud').classList.toggle('hidden', !show);
   },
+  showMinimap(show) {
+    const w = $('minimapWrap');
+    if (w) w.classList.toggle('hidden', !show);
+  },
+  setMinimapInfo(html) {
+    const el = $('minimapInfo');
+    if (el) el.innerHTML = html;
+  },
   setPickups() { /* 预留: 拾取物计数 */ },
 };

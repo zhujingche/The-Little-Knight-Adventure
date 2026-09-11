@@ -6,7 +6,7 @@
 <title>小骑士的探险</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2.2">
+<link rel="stylesheet" href="css/style.css?v=2.3">
 </head>
 <body>
 <div id="stage">
@@ -26,6 +26,10 @@
       </div>
       <div id="hudItems"></div>
       <div id="roomLabel"></div>
+      <div id="minimapWrap" class="hidden">
+        <canvas id="minimapCanvas" width="230" height="170"></canvas>
+        <div id="minimapInfo"></div>
+      </div>
       <div id="bossBarWrap" class="hidden"><div id="bossName"></div><div id="bossBarFill"></div></div>
       <div id="itemFlash" class="hidden">
         <div id="itemFlashName"></div>
@@ -47,6 +51,7 @@
         <button class="fbtn" data-dir="down"><span>▼</span></button>
         <button class="fbtn" data-dir="right"><span>▶</span></button>
       </div>
+      <button id="mapBtn">地图</button>
     </div>
 
     <!-- ============ Screens ============ -->
@@ -63,7 +68,7 @@
         <div id="helpBox" class="hidden">
           <p><b>WASD</b> 移动　<b>方向键</b> 朝四方向发射圣泪（可斜向）</p>
           <p><b>按住鼠标左键</b> 也可朝光标方向发射圣泪（移动端点按屏幕射击）</p>
-          <p><b>E / 空格</b> 开启宝箱　<b>P</b> 暂停</p>
+          <p><b>E / 空格</b> 开启宝箱　<b>P</b> 暂停　<b>Tab / M</b> 楼层地图</p>
           <p>移动端：左下方向键移动，右下十字键射击</p>
           <p>清空房间敌人即可通过大门；击败每层 Boss 拾取“圣物”下到下一层！</p>
         </div>
@@ -119,10 +124,10 @@
     </div>
 
     <div id="fps" class="hidden"></div>
-    <div id="buildTag">v2.2</div>
+    <div id="buildTag">v2.3</div>
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=2.1"></script>
+<script type="module" src="js/main.js?v=2.3"></script>
 </body>
 </html>

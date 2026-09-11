@@ -20,8 +20,8 @@ class Input {
   }
   _block(e) {
     const c = e.code;
-    // 阻止方向键/空格滚动页面; 其余键(如 F12/调试)放行
-    return c.startsWith('Arrow') || c === 'Space' || c === 'KeyP' || c === 'KeyE';
+    // 阻止方向键/空格/Tab 的默认行为(页面滚动、焦点跳转)
+    return c.startsWith('Arrow') || c === 'Space' || c === 'KeyP' || c === 'KeyE' || c === 'Tab';
   }
   down(code) { return this.keys.has(code) || this.vKeys.has(code); }
   // 鼠标瞄准(世界坐标由 main 换算后写入)

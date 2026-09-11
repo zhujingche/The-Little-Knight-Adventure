@@ -19,7 +19,7 @@ function getJson(url) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const KEYCODE = { KeyW: 87, KeyA: 65, KeyS: 83, KeyD: 68, ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39, KeyE: 69, Space: 32 };
+const KEYCODE = { KeyW: 87, KeyA: 65, KeyS: 83, KeyD: 68, ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39, KeyE: 69, Space: 32, Tab: 9, KeyM: 77, KeyR: 82, KeyP: 80 };
 
 async function main() {
   const scenario = process.argv[2] || 'p1';
@@ -147,6 +147,35 @@ async function main() {
       check('程序化 BGM 已激活(seq 运行)', ok, aud);
       await shot('verify_proc.png');
       if (!ok) throw new Error('程序化BGM未激活: ' + aud);
+    } else if (scenario === 'map') {
+      await sleep(1200);
+      // 按 Tab 打开地图
+      await hold('Tab', 60);
+      await sleep(500);
+      const vis = await ev(`!document.getElementById('minimapWrap').classList.contains('hidden')`);
+      check('Tab 打开楼层地图', vis === true, 'visible=' + vis);
+      const rectInfo = await ev(`(()=>{const w=document.getElementById('minimapWrap');const r=w.getBoundingClientRect();const cs=getComputedStyle(w);const c=document.getElementById('minimapCanvas');const cr=c.getBoundingClientRect();return JSON.stringify({wrap:[Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)],display:cs.display,opacity:cs.opacity,z:cs.zIndex,canvas:[Math.round(cr.width),Math.round(cr.height)],canvasAttr:[c.width,c.height]});})()`);
+      console.log('MINIMAP RECT ' + rectInfo);
+      try {
+        const s2 = await ses('Page.captureScreenshot', { format: 'png', clip: { x: 690, y: 40, width: 260, height: 210, scale: 2 } });
+        fs.mkdirSync(path.join(__dirname, '..', 'shots'), { recursive: true });
+        fs.writeFileSync(path.join(__dirname, '..', 'shots', 'verify_map_crop.png'), Buffer.from(s2.data, 'base64'));
+        console.log('shot verify_map_crop.png');
+      } catch (e) { console.log('crop shot fail ' + e.message); }
+      const drawn = await ev(`(()=>{const c=document.getElementById('minimapCanvas');const g=c.getContext('2d');const d=g.getImageData(0,0,c.width,c.height).data;let n=0;for(let i=0;i<d.length;i+=4){if(d[i]+d[i+1]+d[i+2]>140)n++;}return n>300;})()`);
+      check('地图已绘制(非空白)', drawn === true, 'painted=' + drawn);
+      const v0 = await ev(`window.GAME().rooms.filter(r=>r.visited).length`);
+      await ev('window.DEBUG.god(true)');
+      await ev('window.DEBUG.teleport("treasure")');
+      await sleep(800);
+      const v1 = await ev(`window.GAME().rooms.filter(r=>r.visited).length`);
+      check('探索新房间后已探索数增加', v1 > v0, 'visited ' + v0 + '->' + v1);
+      await shot('verify_map.png');
+      // 再按 Tab 关闭
+      await hold('Tab', 60);
+      await sleep(400);
+      const vis2 = await ev(`document.getElementById('minimapWrap').classList.contains('hidden')`);
+      check('再按 Tab 关闭地图', vis2 === true, 'hidden=' + vis2);
     } else if (scenario === 'touch') {
       await ses('Page.navigate', { url: 'http://127.0.0.1:8123/index.html?auto=1&mobile=1' });
       for (let i = 0; i < 40; i++) { try { if ((await ev('document.readyState')) === 'complete') break; } catch (e) { } await sleep(200); }
