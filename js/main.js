@@ -430,5 +430,7 @@ window.DEBUG = {
     game.floorIdx = Math.max(1, Math.min(3, n | 0));
     game.buildFloor();
   },
+  grantCoins(n = 20) { if (game && game.player) game.player.coins += n; },
+  grantKeys(n = 1) { if (game && game.player) game.player.keys += n; },
   diag() { return game ? game.diag() : null; },
 };

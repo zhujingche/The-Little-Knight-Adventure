@@ -90,8 +90,9 @@ export class Room {
     const ringFree = (cx, cy) => cx === 1 || cx === 13 || cy === 1 || cy === 8;
     if (this.role !== 'boss') {
       const rockCount = this.role === 'start' ? rng.int(1, 2) :
-        this.role === 'treasure' ? rng.int(1, 3) :
-          Math.min(7, rng.int(2, 4) + this.floor.floorIdx);
+        this.role === 'shop' ? 0 :
+          this.role === 'treasure' ? rng.int(1, 3) :
+            Math.min(7, rng.int(2, 4) + this.floor.floorIdx);
       let placed = 0, guard = 0;
       while (placed < rockCount && guard++ < 200) {
         const cx = rng.int(1, 13), cy = rng.int(1, 8);

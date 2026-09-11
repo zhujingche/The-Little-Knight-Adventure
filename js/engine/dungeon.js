@@ -99,6 +99,10 @@ export function genFloor(floorIdx, seed) {
   for (let i = 0; i < treasureCount && i < normalIdx.length; i++) {
     nodes[normalIdx[i]].role = 'treasure';
   }
+  // 商店房: 房间数够多时保证 1 间(排在宝藏房之后)
+  if (normalIdx.length - treasureCount >= 2) {
+    nodes[normalIdx[treasureCount]].role = 'shop';
+  }
 
   // 4) Boss 房要经由"它的上一个房间"可达(挂在它连接到的普通房)
   const bossAdj = adjOf(bossIdx);

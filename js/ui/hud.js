@@ -1,5 +1,5 @@
 // hud.js — DOM HUD: 红心/道具栏/层数/Boss血条/道具闪光/房间名
-import { hudHeart } from '../art/world.js';
+import { hudHeart, coinSprite, keySprite } from '../art/world.js';
 import { iconSprite } from '../art/icons.js';
 import { ITEM_MAP } from '../items.js';
 import { FLOOR_LABELS } from '../config.js';
@@ -98,5 +98,28 @@ export const hud = {
     const el = $('minimapInfo');
     if (el) el.innerHTML = html;
   },
-  setPickups() { /* 预留: 拾取物计数 */ },
+  // 金币 / 钥匙 计数
+  setPickups(coins = 0, keys = 0) {
+    const el = $('hudPickup');
+    if (!el) return;
+    const sig = coins + '/' + keys;
+    if (this.pickSig === sig) return;
+    this.pickSig = sig;
+    el.innerHTML = '';
+    const mk = (sprite, n) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'pbox';
+      wrap.style.cssText = 'display:flex;align-items:center;background:rgba(0,0,0,.5);border:2px solid #241d12;padding:2px 6px 2px 3px;';
+      const c = canvasFrom(sprite, '');
+      c.style.width = '24px'; c.style.height = '24px';
+      wrap.appendChild(c);
+      const s = document.createElement('span');
+      s.textContent = n;
+      s.style.cssText = 'font-size:14px;color:#ffe9a8;text-shadow:2px 2px 0 #000;margin-left:4px;';
+      wrap.appendChild(s);
+      return wrap;
+    };
+    el.appendChild(mk(coinSprite(), coins));
+    el.appendChild(mk(keySprite(), keys));
+  },
 };

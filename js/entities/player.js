@@ -49,6 +49,8 @@ export class Player {
     this.f = { pierce: false, homing: false, split: false, burn: false, spectral: false, laser: false, tri: false, quad: false, spread: false, giga: false, crit: false, luck: 0 };
     this.fired = 0;
     this.slashes = 0;
+    this.coins = 0;          // 金币(跨层保留)
+    this.keys = 0;           // 钥匙(开宝箱用)
   }
 
   get dmg() { return (P.baseDmg + this.addDmg) * this.dmgMult; }

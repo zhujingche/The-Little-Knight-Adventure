@@ -1,6 +1,26 @@
 // art/world.js — 岩石/宝箱/红心/祭坛/圣泪/装饰物 硬像素美术
 import { pixSprite } from './pix.js';
 
+// ---------- 金币 / 钥匙(掉落与HUD) ----------
+export function coinSprite() {
+  return pixSprite('pick:coin', 12, 12, (b) => {
+    b.ellipse(6, 6, 5.0, 5.0, '#8a6a1e');
+    b.ellipse(6, 6, 4.0, 4.0, '#e8b84a');
+    b.ellipse(5.2, 5.0, 2.0, 1.8, '#ffe9a8');
+    b.rect(5.4, 3.6, 1.2, 4.8, '#8a6a1e');
+    b.px(4.4, 4.4, '#fff6d0', 1, 1);
+  });
+}
+export function keySprite() {
+  return pixSprite('pick:key', 12, 12, (b) => {
+    b.ellipse(4.2, 4.2, 2.6, 2.6, '#d8c070');
+    b.ellipse(4.2, 4.2, 1.0, 1.0, '#3a2c10');
+    b.rect(4.0, 6.0, 1.4, 4.6, '#d8c070');
+    b.rect(5.4, 8.6, 2.0, 1.2, '#d8c070');
+    b.rect(5.4, 10.0, 1.4, 1.0, '#d8c070');
+  });
+}
+
 // ---------- 骨钉光刃(挥击发出的青白斩击波, 指向 +X) ----------
 export function bladeSprite() {
   return pixSprite('fx:blade', 22, 16, (b) => {

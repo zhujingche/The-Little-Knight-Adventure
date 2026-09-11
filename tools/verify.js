@@ -262,6 +262,44 @@ async function main() {
       await sleep(600);
       const b1 = await diag();
       check('光刃对 Boss 造成伤害', (b1.boss && b0.boss) ? b1.boss.hpPct <= b0.boss.hpPct : true, 'boss ' + (b0.boss && b0.boss.hpPct) + '->' + (b1.boss && b1.boss.hpPct));
+    } else if (scenario === 'shop') {
+      await ev('window.DEBUG.god(true)');
+      await ev('window.DEBUG.teleport("shop")');
+      await sleep(600);
+      let d = await diag();
+      const shopOk = d.cur && d.cur.role === 'shop';
+      const n = await ev('(()=>{const r=window.GAME().currentRoom;return r.shop?r.shop.length:0;})()');
+      check('地图生成商店房', shopOk && n >= 3, 'role=' + (d.cur && d.cur.role) + ' 商品=' + n);
+      check('HUD 显示金币/钥匙', (await ev(`document.querySelectorAll('#hudPickup .pbox').length`)) === 2, 'hud pickups');
+      await shot('snap_shop.png');
+      // 给钱 → 站到第一件商品上 → 应自动购买
+      await ev('window.DEBUG.grantCoins(40)');
+      await sleep(200);
+      const c0 = (await diag()).player.coins;
+      const it0 = (await diag()).player.items.length;
+      await ev('(()=>{const g=window.GAME();const e=g.currentRoom.shop.find(x=>x.kind==="item"&&!x.sold);if(e){g.player.x=e.x;g.player.y=e.y;}})()');
+      await sleep(700);
+      d = await diag();
+      check('商店可购买道具(扣金币)', d.player.coins < c0, 'coins ' + c0 + ' -> ' + d.player.coins);
+      check('购买后道具入包且标为已售', d.player.items.length > it0, 'items ' + it0 + ' -> ' + d.player.items.length);
+      // 钱不够时不能买
+      await ev('(()=>{const g=window.GAME();g.player.coins=0;const e=g.currentRoom.shop.find(x=>x.kind==="heart"&&!x.sold);if(e){g.player.x=e.x;g.player.y=e.y;}})()');
+      await sleep(600);
+      const soldOut = await ev('(()=>{const g=window.GAME();const e=g.currentRoom.shop.find(x=>x.kind==="heart");return e?e.sold:null;})()');
+      check('金币不足时无法购买', soldOut === false, 'heartSold=' + soldOut);
+      // 宝箱需要钥匙
+      await ev('window.DEBUG.teleport("treasure")');
+      await sleep(500);
+      for (let i = 0; i < 4; i++) { await ev('window.DEBUG.nuke()'); await sleep(220); }
+      await ev('(()=>{const g=window.GAME();g.player.keys=0;const c=g.currentRoom.chest;if(c){g.player.x=c.x;g.player.y=c.y;}})()');
+      await sleep(600);
+      const noKeyOpened = await ev('!!(window.GAME().currentRoom.chest && window.GAME().currentRoom.chest.opened)');
+      check('无钥匙时宝箱打不开', noKeyOpened === false, 'opened=' + noKeyOpened);
+      await ev('window.DEBUG.grantKeys(1)');
+      await sleep(700);
+      const withKey = await ev('!!(window.GAME().currentRoom.chest && window.GAME().currentRoom.chest.opened)');
+      check('有钥匙时宝箱打开并消耗钥匙', withKey === true && (await diag()).player.keys === 0, 'opened=' + withKey + ' keys=' + (await diag()).player.keys);
+      await shot('snap_chest.png');
     } else if (scenario === 'touch') {
       await ses('Page.navigate', { url: 'http://127.0.0.1:8123/index.html?auto=1&mobile=1' });
       for (let i = 0; i < 40; i++) { try { if ((await ev('document.readyState')) === 'complete') break; } catch (e) { } await sleep(200); }
@@ -644,14 +682,19 @@ async function sP7({ diag, ev, check, sleep, hold }) {
   await sleep(300);
   d = await diag();
   const cx = 7 * 64 + 32, cy = 4 * 64 + 32;
-  // 传送到宝箱旁自动触发开启(updateChest: 房间已清+靠近42px)
+  // 无钥匙: 站在宝箱旁也不该打开
   await ev('window.DEBUG.god(true)');
-  await ev(`(()=>{const g=window.GAME();g.player.x=${cx - 30};g.player.y=${cy};})()`);
+  await ev('(()=>{const g=window.GAME();g.player.keys=0;g.player.x=' + (cx - 30) + ';g.player.y=' + cy + ';})()');
+  await sleep(700);
+  d = await diag();
+  check('无钥匙时宝箱不开', !(d.cur && d.cur.chest && d.cur.chest.opened), 'opened=' + (d.cur && d.cur.chest && d.cur.chest.opened));
+  // 给一把钥匙 → 自动开箱掉道具
+  await ev('window.DEBUG.grantKeys(1)');
   await sleep(900);
   d = await diag();
   const chestOpened = d.cur && d.cur.chest && d.cur.chest.opened;
   const itemDropped = d.pickups.some((p) => p.indexOf('item') === 0) || d.player.items.length > 0;
-  check('清房后宝箱开启并掉落道具', chestOpened && itemDropped, 'chestOpened=' + chestOpened + ' pickups=' + d.pickups.join(',') + ' items=' + d.player.items.length);
+  check('有钥匙时宝箱开启并掉落道具', chestOpened && itemDropped, 'chestOpened=' + chestOpened + ' pickups=' + d.pickups.join(',') + ' items=' + d.player.items.length);
 }
 
 // ---- p8: 端到端攻击验证(方向键击杀 + 按住鼠标朝光标击杀) ----

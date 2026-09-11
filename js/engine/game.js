@@ -12,7 +12,7 @@ import { rollItem, applyItem, ITEM_MAP } from '../items.js';
 import { sfx, setMusic } from '../audio.js';
 import { input } from '../input.js';
 import { hud } from '../ui/hud.js';
-import { chestSprite, heartPickupSprite, pedestalSprite } from '../art/world.js';
+import { chestSprite, heartPickupSprite, pedestalSprite, coinSprite, keySprite } from '../art/world.js';
 import { iconSprite } from '../art/icons.js';
 
 const VIEW_W = CFG.VIEW_W, VIEW_H = CFG.VIEW_H;
@@ -145,6 +145,7 @@ export class Game {
     } else {
       room.sealed = false;       // 已清空的房间: 门保持打开
     }
+    if (room.role === 'shop') this.buildShop(room);
     // 玩家位置
     const p = this.player;
     if (p) {
@@ -154,7 +155,7 @@ export class Game {
     this.pickups = room.pickups || (room.pickups = []);
     this.pickups.forEach(pk => pk.t = 0);
     // 通知
-    const name = { start: '起点房间', normal: '地牢', treasure: '宝藏室', boss: 'BOSS 房' }[room.role];
+    const name = { start: '起点房间', normal: '地牢', treasure: '宝藏室', shop: '商店', boss: 'BOSS 房' }[room.role];
     hud.roomToast((this.floorIdx <= 3 ? ['I', 'II', 'III'][this.floorIdx - 1] : 'IV') + '层 · ' + (THEMES[this.floor.themeNo].name) + ' · ' + name);
     setMusic(this.floorIdx, !!this.boss);
     hud.floorLabel(this.floorIdx);
@@ -283,6 +284,7 @@ export class Game {
     // 拾取物 & 宝箱
     this.updatePickups(dt);
     this.updateChest();
+    this.updateShop();
     // 楼梯
     if (this.stairs && p && !p.dead) {
       const d = Math.hypot(p.x - this.stairs.x, p.y - this.stairs.y);
@@ -296,6 +298,7 @@ export class Game {
     // 心跳HUD刷新
     if (this.hpDirty) { hud.setHearts(p.maxHp / 2, p.hp, p.maxHp / 2); this.hpDirty = false; }
     if (this.itemDirty) { hud.setItems(p); this.itemDirty = false; }
+    hud.setPickups(p.coins, p.keys);
   }
 
   // ---------------- 圣泪/敌弹 ----------------
@@ -526,7 +529,16 @@ export class Game {
     const roll = Math.random();
     if (e.elite) { this.spawnItemPedestal(e.x, e.y); return; }
     if (roll < 0.08 + this.floorIdx * 0.01) { this.spawnItemPedestal(e.x, e.y); return; }
-    if (roll < 0.28) this.spawnHeartPickup(e.x, e.y, Math.random() < 0.4 ? 1 : 2);
+    if (roll < 0.20) { this.spawnHeartPickup(e.x, e.y, Math.random() < 0.4 ? 1 : 2); return; }
+    if (roll < 0.30) { this.spawnKeyPickup(e.x, e.y); return; }
+    if (roll < 0.78) this.spawnCoinPickup(e.x, e.y, 1 + (Math.random() < 0.3 ? 1 : 0));
+  }
+
+  spawnCoinPickup(x, y, amount = 1) {
+    this.pickups.push({ kind: 'coin', x, y, amount, t: 0, taken: false });
+  }
+  spawnKeyPickup(x, y) {
+    this.pickups.push({ kind: 'key', x, y, amount: 1, t: 0, taken: false });
   }
 
   checkRoomClear() {
@@ -596,6 +608,93 @@ export class Game {
     this.pickups.push({ kind: 'item', x, y, item, t: 0, taken: false });
   }
 
+  // ---------------- 商店 ----------------
+  buildShop(room) {
+    if (room.shop) return;
+    const T = 64;
+    const entries = [];
+    const it1 = rollItem(this);
+    if (it1) entries.push({ kind: 'item', itemId: it1.id, price: 15, sold: false, x: 4 * T + T / 2, y: 4 * T + T / 2 });
+    const it2 = rollItem(this);
+    if (it2 && (!it1 || it2.id !== it1.id)) entries.push({ kind: 'item', itemId: it2.id, price: 15, sold: false, x: 10 * T + T / 2, y: 4 * T + T / 2 });
+    entries.push({ kind: 'heart', price: 3, sold: false, x: 7 * T + T / 2, y: 6.2 * T });
+    entries.push({ kind: 'key', price: 5, sold: false, x: 7 * T + T / 2, y: 2.6 * T });
+    room.shop = entries;
+  }
+
+  updateShop() {
+    const room = this.currentRoom;
+    if (!room || !room.shop || !room.shop.length) return;
+    const p = this.player;
+    if (!p || p.dead) return;
+    for (const e of room.shop) {
+      if (e.sold) continue;
+      if (Math.hypot(p.x - e.x, p.y - e.y) > 32) continue;
+      if (p.coins < e.price) {
+        this.shopHintT = (this.shopHintT || 0) - 1 / 60;
+        if (this.shopHintT <= 0) {
+          this.shopHintT = 2.2;
+          this.parts.text(e.x, e.y - 40, '金币不足 ' + e.price + '¢', '#ff9a8a', 1.2, 12);
+        }
+        continue;
+      }
+      p.coins -= e.price;
+      e.sold = true;
+      if (e.kind === 'item') {
+        const it = ITEM_MAP.get(e.itemId);
+        if (it) applyItem(this, it);
+      } else if (e.kind === 'heart') {
+        p.heal(2);
+        this.hpDirty = true;
+        this.parts.text(e.x, e.y - 30, '+♥', '#ff8a8a', 1.0, 13);
+      } else if (e.kind === 'key') {
+        p.keys++;
+        this.parts.text(e.x, e.y - 30, '+钥匙', '#ffe9a8', 1.0, 12);
+      }
+      sfx('chest');
+      this.parts.ring(e.x, e.y - 8, '#ffe9a0', 18);
+      this.parts.sparkle(e.x, e.y - 14, '#fff2b0', 8);
+    }
+  }
+
+  drawShop(g, room) {
+    if (!room.shop || !room.shop.length) return;
+    const pedSp = pedestalSprite();
+    for (const e of room.shop) {
+      const bob = e.sold ? 0 : Math.sin(this.fxTime * 2.2 + e.x * 0.01) * 3;
+      if (!e.sold) {
+        g.save();
+        g.globalCompositeOperation = 'lighter';
+        const col = e.kind === 'item' ? (ITEM_MAP.get(e.itemId) || {}).aura || '#ffe08a' : (e.kind === 'key' ? '#ffe9a8' : '#ff9a9a');
+        const grad = g.createRadialGradient(e.x, e.y - 6, 2, e.x, e.y - 6, 36);
+        grad.addColorStop(0, col + '88');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = grad;
+        g.beginPath(); g.arc(e.x, e.y - 6, 36, 0, 7); g.fill();
+        g.restore();
+      }
+      drawSprite(g, pedSp, e.x, e.y + 2, 1);
+      if (!e.sold) {
+        let icon = null;
+        if (e.kind === 'item') icon = iconSprite(e.itemId, (ITEM_MAP.get(e.itemId) || {}).aura || '#ffe08a');
+        else if (e.kind === 'heart') icon = heartPickupSprite();
+        else icon = keySprite();
+        drawSprite(g, icon, e.x, e.y - 22 - bob, 1);
+      }
+      // 价格标签
+      g.save();
+      g.font = 'bold 13px "Courier New", monospace';
+      g.textAlign = 'center';
+      g.textBaseline = 'top';
+      const y = e.y + 20;
+      g.fillStyle = 'rgba(0,0,0,.7)';
+      g.fillRect(e.x - 26, y - 2, 52, 17);
+      g.fillStyle = e.sold ? '#7f8a95' : '#ffd97a';
+      g.fillText(e.sold ? '已售出' : e.price + '¢', e.x, y);
+      g.restore();
+    }
+  }
+
   updatePickups(dt) {
     const p = this.player;
     for (const pk of this.pickups) {
@@ -615,6 +714,18 @@ export class Game {
             }
           } else if (pk.kind === 'item' && pk.item) {
             applyItem(this, pk.item);
+            pk.taken = true;
+          } else if (pk.kind === 'coin') {
+            p.coins += pk.amount;
+            sfx('pickup');
+            this.parts.sparkle(pk.x, pk.y, '#ffe08a', 4);
+            this.parts.text(pk.x, pk.y - 20, '+' + pk.amount + '¢', '#ffd97a', 0.8, 11);
+            pk.taken = true;
+          } else if (pk.kind === 'key') {
+            p.keys++;
+            sfx('pickup');
+            this.parts.sparkle(pk.x, pk.y, '#e8d090', 5);
+            this.parts.text(pk.x, pk.y - 20, '+钥匙', '#ffe9a8', 0.9, 11);
             pk.taken = true;
           }
         }
@@ -651,15 +762,27 @@ export class Game {
     if (!room.chest || room.chest.opened || !room.cleared) return;
     const p = this.player;
     if (!p || p.dead) return;
-    if (Math.hypot(p.x - room.chest.x, p.y - room.chest.y) < 42) {
-      room.chest.opened = true;
-      sfx('chest');
-      this.parts.ring(room.chest.x, room.chest.y, '#ffe9a0', 26);
-      this.spawnItemPedestal(room.chest.x, room.chest.y);
-      const extra = Math.random();
-      if (extra < 0.45) this.spawnHeartPickup(room.chest.x - 26, room.chest.y, 2);
-      if (extra > 0.65) this.spawnHeartPickup(room.chest.x + 26, room.chest.y, 2);
+    if (Math.hypot(p.x - room.chest.x, p.y - room.chest.y) >= 46) return;
+    // 宝箱需要钥匙
+    if (p.keys <= 0) {
+      this.chestHintT = (this.chestHintT || 0) - 1 / 60;
+      if (this.chestHintT <= 0) {
+        this.chestHintT = 2.2;
+        hud.roomToast('需要一把钥匙', false);
+        this.parts.text(room.chest.x, room.chest.y - 34, '需要钥匙', '#ffd97a', 1.2, 12);
+      }
+      return;
     }
+    p.keys--;
+    room.chest.opened = true;
+    sfx('chest');
+    this.parts.ring(room.chest.x, room.chest.y, '#ffe9a0', 26);
+    this.parts.text(room.chest.x, room.chest.y - 34, '-1 钥匙', '#ffe9a8', 1.1, 12);
+    this.spawnItemPedestal(room.chest.x, room.chest.y);
+    const extra = Math.random();
+    if (extra < 0.45) this.spawnHeartPickup(room.chest.x - 26, room.chest.y, 2);
+    if (extra > 0.65) this.spawnHeartPickup(room.chest.x + 26, room.chest.y, 2);
+    if (this.pickupDirty === undefined) this.pickupDirty = true;
   }
 
   // ---------------- 门/切换 ----------------
@@ -776,6 +899,7 @@ export class Game {
         speed: Math.round(p.speed), range: +p.rangeTiles.toFixed(2),
         flags: Object.keys(p.f).filter(k => p.f[k]),
         slashes: p.slashes || 0,
+        coins: p.coins || 0, keys: p.keys || 0,
         dead: p.dead, god: !!p.god,
       } : null,
       enemies: this.enemies.filter(e => !e.dead).map(e => e.kind),
@@ -817,6 +941,7 @@ export class Game {
     // 拾取物/宝箱/楼梯
     this.drawPickups(g);
     this.drawChest(g, room);
+    this.drawShop(g, room);
     this.drawStairs(g);
     // 敌人 & Boss
     for (const e of this.enemies) e.draw(g);
@@ -923,6 +1048,7 @@ export class Game {
       let col = '#3d4a5c';
       if (n.role === 'start') col = '#37756f';
       else if (n.role === 'treasure') col = '#8a6a24';
+      else if (n.role === 'shop') col = '#7a5f2a';
       else if (n.role === 'boss') col = '#7d2b2b';
       g.fillStyle = r.visited ? col : '#1d232c';
       g.fillRect(x, y, size, size);
@@ -936,6 +1062,7 @@ export class Game {
         g.textBaseline = 'middle';
         if (n.role === 'boss') g.fillText('☠', p.x, p.y + 1);
         else if (n.role === 'treasure') g.fillText('▣', p.x, p.y + 1);
+        else if (n.role === 'shop') g.fillText('$', p.x, p.y + 1);
         else if (n.role === 'start') g.fillText('⌂', p.x, p.y + 1);
         else if (r.cleared) g.fillText('·', p.x, p.y + 1);
       }
@@ -987,6 +1114,18 @@ export class Game {
         g.shadowColor = 'rgba(255,80,80,0.5)';
         g.shadowBlur = 12;
         drawSprite(g, sp, pk.x, pk.y - 8 + bob, 1);
+        g.restore();
+      } else if (pk.kind === 'coin') {
+        g.save();
+        g.shadowColor = 'rgba(255,210,90,0.5)';
+        g.shadowBlur = 10;
+        drawSprite(g, coinSprite(), pk.x, pk.y - 8 + bob, 1);
+        g.restore();
+      } else if (pk.kind === 'key') {
+        g.save();
+        g.shadowColor = 'rgba(230,210,130,0.5)';
+        g.shadowBlur = 12;
+        drawSprite(g, keySprite(), pk.x, pk.y - 8 + bob, 1);
         g.restore();
       } else if (pk.kind === 'item' && pk.item) {
         const item = pk.item;
