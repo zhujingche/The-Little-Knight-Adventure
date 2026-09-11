@@ -111,10 +111,12 @@ export class Game {
     if (isBossRoom) {
       if (!room.cleared) {
         const kind = this.floorIdx === 1 ? 'hop' : 'knight';
+        const tier = kind === 'hop' ? 1 : (this.floorIdx >= 3 ? 3 : 2);
         const hpMul = this.floorIdx === 3 ? 520 / 380 : 1;
         this.boss = new Boss(kind, 7 * T + T / 2, 4 * T + T / 2, this, {
           hp: kind === 'hop' ? 210 * (1 + (this.floorIdx - 1) * 0.25) : 380 * hpMul,
           speedMul: this.floorIdx >= 3 ? 1.18 : 1,
+          tier,
         });
         room.hadHostiles = true;
         this.roomHadHostiles = true;
@@ -123,9 +125,9 @@ export class Game {
         if (!room.bossIntroShown) {
           room.bossIntroShown = true;
           sfx('bossRoar');
-          hud.roomToast('⚠ BOSS · ' + (kind === 'hop' ? '大眼魔王' : '深渊大骑士') + ' ⚠', true);
+          hud.roomToast('⚠ BOSS · ' + this.bossName() + ' ⚠', true);
         }
-        hud.bossBar(true, 1, kind === 'knight', kind === 'hop' ? '大眼魔王' : '深渊大骑士');
+        hud.bossBar(true, 1, kind === 'knight', this.bossName());
       } else {
         room.sealed = false;
       }
@@ -269,6 +271,12 @@ export class Game {
 
     // 接触伤害(敌人/弹 vs 玩家)
     if (p && !p.dead && p.iTimer <= 0) {
+      // 尖刺机关: 站在地刺上掉半心(有无敌帧限制, 不会瞬间秒杀)
+      const scx = Math.floor(p.x / T), scy = Math.floor(p.y / T);
+      if (room.tileType(scx, scy) === 2) {
+        p.takeDamage(1, -Math.PI / 2, this);
+        this.parts.blood(p.x, p.y, Math.PI / 2, 6);
+      }
       for (const e of this.enemies) {
         if (e.dead) continue;
         const d = Math.hypot(p.x - e.x, p.y - e.y);
@@ -291,7 +299,7 @@ export class Game {
       if (d < 34) this.startFloorAdvance();
     }
     // Boss血条
-    if (this.boss && !this.boss.dead) hud.bossBar(true, this.boss.halfHp, this.boss.kind !== 'hop', this.boss.kind === 'hop' ? '大眼魔王' : '深渊大骑士');
+    if (this.boss && !this.boss.dead) hud.bossBar(true, this.boss.halfHp, this.boss.kind !== 'hop', this.bossName());
     else if (this.state === 'play') hud.bossBar(false);
 
     this.parts.update(dt);
@@ -587,7 +595,7 @@ export class Game {
     room.stairs = this.stairs;
     // 若仍有召唤小兵存活则等小兵清完
     if (this.enemies.some(e => !e.dead)) {
-      hud.roomToast('深渊大骑士倒下了！先清理残兵…');
+      hud.roomToast(this.bossName(boss) + '倒下了！先清理残兵…');
       this.boss = null;
       hud.bossBar(false);
       return;
@@ -596,6 +604,13 @@ export class Game {
     hud.bossBar(false);
     hud.roomToast('BOSS 被击败！走向楼梯 ↓');
     this.clearRoom(room);
+  }
+
+  // Boss 名称(按层数区分: 1层大眼魔王 / 2层骸骨骑士 / 3层深渊大骑士)
+  bossName(b = this.boss) {
+    if (!b) return '';
+    if (b.kind === 'hop') return '大眼魔王';
+    return (b.tier >= 3) ? '深渊大骑士' : '骸骨骑士';
   }
 
   // ---------------- 拾取物 ----------------
@@ -903,7 +918,7 @@ export class Game {
         dead: p.dead, god: !!p.god,
       } : null,
       enemies: this.enemies.filter(e => !e.dead).map(e => e.kind),
-      boss: this.boss && !this.boss.dead ? { kind: this.boss.kind, hpPct: Math.round(this.boss.halfHp * 100), state: this.boss.state } : null,
+      boss: this.boss && !this.boss.dead ? { kind: this.boss.kind, tier: this.boss.tier, hpPct: Math.round(this.boss.halfHp * 100), state: this.boss.state } : null,
       counts: {
         pTears: this.pTears.length, eTears: this.eTears.length, lasers: this.lasers.length,
         blades: this.pTears.filter(t => t.blade).length, parts: this.parts.list.length,

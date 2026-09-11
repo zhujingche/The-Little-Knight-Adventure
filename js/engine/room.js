@@ -106,6 +106,20 @@ export class Room {
         this.rockVar[i] = rng.int(0, 1);
         placed++;
       }
+      // 尖刺机关: 普通房有一定概率出现一小片地刺(踩上去掉半心)
+      if (this.role === 'normal' && rng.chance(0.3)) {
+        const want = rng.int(2, 4);
+        let sp = 0, sg = 0;
+        while (sp < want && sg++ < 120) {
+          const cx = rng.int(3, 11), cy = rng.int(2, 6);
+          const i = this._cell(cx, cy);
+          if (this.tiles[i]) continue;
+          if (ringFree(cx, cy) || isDoorLane(cx, cy)) continue;
+          if (Math.abs(cx - 7) <= 1 && Math.abs(cy - 4) <= 1) continue;   // 不铺在出生点
+          this.tiles[i] = 2;
+          sp++;
+        }
+      }
     } else {
       // Boss 房少量掩体(边缘)
       const spots = [[3, 2], [11, 2], [3, 6], [11, 6]];

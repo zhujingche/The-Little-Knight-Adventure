@@ -7,6 +7,7 @@ import { initAudio, sfx, setMuted, isMuted, setMusic, tryLoadUserBgm } from './a
 import { fmtTime, drawSprite } from './util.js';
 import { getKnight } from './art/player.js';
 import { monsterFrame } from './art/monsters.js';
+import { hopBossSprites } from './art/boss.js';
 import { ITEM_MAP, applyItem } from './items.js';
 import { CFG } from './config.js';
 
@@ -257,9 +258,8 @@ function drawMenuSprite() {
   drawSprite(mg, monsterFrame('fly', menuT * 1.4), 520 + Math.sin(menuT * 2) * 40, 300 + bob2, 1, false);
   drawSprite(mg, monsterFrame('fly', menuT * 1.4 + 3), 700 + Math.cos(menuT * 1.7) * 36, 260 + Math.sin(menuT * 2.6) * 30, 1, false);
   // 大眼魔王(后景剪影)
-  mg.globalAlpha = 0.5;
-  const hop = monsterFrame('fly', menuT);
-  drawSprite(mg, hop, 810, 470 + bob, 1, false);
+  mg.globalAlpha = 0.55;
+  drawSprite(mg, hopBossSprites()[0], 800, 458 + bob, 0.9);
   mg.globalAlpha = 1;
   // 漂动光点
   mg.fillStyle = 'rgba(255,240,200,0.5)';
@@ -432,5 +432,13 @@ window.DEBUG = {
   },
   grantCoins(n = 20) { if (game && game.player) game.player.coins += n; },
   grantKeys(n = 1) { if (game && game.player) game.player.keys += n; },
+  // 调试: 在玩家脚下铺一块地刺(测试尖刺伤害)
+  spikeHere() {
+    if (!game || !game.player) return;
+    const room = game.currentRoom, T = 64;
+    const cx = Math.floor(game.player.x / T), cy = Math.floor(game.player.y / T);
+    room.tiles[room._cell(cx, cy)] = 2;
+  },
+  bossName() { return game ? game.bossName() : ''; },
   diag() { return game ? game.diag() : null; },
 };

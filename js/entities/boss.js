@@ -10,6 +10,7 @@ const T = CFG.TILE;
 export class Boss {
   constructor(kind, x, y, game, opts = {}) {
     this.kind = kind; // 'hop' | 'knight'
+    this.tier = opts.tier || (kind === 'hop' ? 1 : 3);
     this.game = game;
     this.x = x; this.y = y;
     this.r = kind === 'hop' ? 20 : 17;
@@ -294,7 +295,7 @@ export class Boss {
       g.globalAlpha = 1;
       drawSprite(g, frames[squash ? 1 : 0], this.x, this.state === 'air' ? this.y - 60 : yy, s);
     } else {
-      const frames = knightBossSprites();
+      const frames = knightBossSprites(this.tier);
       const swing = this.state === 'dash' || this.state === 'roar';
       const flip = false;
       drawSprite(g, frames[swing ? 1 : 0], this.x, this.y - 12 + bob, 1, flip);

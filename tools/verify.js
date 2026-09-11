@@ -251,6 +251,22 @@ async function main() {
         if (d.counts.blades > 0) sawBlade = true;
         if (d.stats.kills > k0) { killed = true; break; }
       }
+      // 随机地牢里偶发: 怪刷在岩石里/弹道被石头挡住 → 换个方向再试一次(避免误报)
+      if (!killed) {
+        await ev('window.DEBUG.nuke()');
+        await sleep(250);
+        await hold('KeyD', 200);
+        await sleep(120);
+        await ev('window.DEBUG.spawnAt("gaper", 45, 0)');
+        await sleep(250);
+        for (let i = 0; i < 12 && !killed; i++) {
+          await hold('KeyJ', 200);
+          await sleep(130);
+          d = await diag();
+          if (d.counts.blades > 0) sawBlade = true;
+          if (d.stats.kills > k0) killed = true;
+        }
+      }
       check('骨钉挥击生成光刃', (sawBlade || d.player.slashes > 0) && spawned, 'slashes=' + d.player.slashes + ' bladesSeen=' + sawBlade + ' enemySpawned=' + spawned);
       check('光刃可击杀敌人', killed, 'kills ' + k0 + '->' + d.stats.kills);
       await shot('snap_slash.png');
@@ -300,6 +316,34 @@ async function main() {
       const withKey = await ev('!!(window.GAME().currentRoom.chest && window.GAME().currentRoom.chest.opened)');
       check('有钥匙时宝箱打开并消耗钥匙', withKey === true && (await diag()).player.keys === 0, 'opened=' + withKey + ' keys=' + (await diag()).player.keys);
       await shot('snap_chest.png');
+    } else if (scenario === 'hazard') {
+      // 尖刺机关伤害
+      await ev('window.DEBUG.teleport("start")');
+      await sleep(500);
+      await ev('window.GAME().player.god = false');
+      const h0 = (await diag()).player.hp;
+      await ev('window.DEBUG.spikeHere()');
+      await sleep(1400);
+      const h1 = (await diag()).player.hp;
+      check('踩到尖刺会掉血', h1 < h0, 'hp ' + h0 + ' -> ' + h1);
+      await ev('window.GAME().player.god = true');
+      // 每层 Boss 差异化(2层骸骨骑士 / 3层深渊大骑士)
+      await ev('window.DEBUG.setFloor(2)');
+      await sleep(700);
+      await ev('window.DEBUG.teleport("boss")');
+      await sleep(600);
+      let d = await diag();
+      const n2 = await ev('window.DEBUG.bossName()');
+      check('二层 Boss 为骸骨骑士(独立配色)', d.boss && d.boss.tier === 2 && n2 === '骸骨骑士', 'tier=' + (d.boss && d.boss.tier) + ' name=' + n2);
+      await shot('snap_boss2.png');
+      await ev('window.DEBUG.setFloor(3)');
+      await sleep(700);
+      await ev('window.DEBUG.teleport("boss")');
+      await sleep(600);
+      d = await diag();
+      const n3 = await ev('window.DEBUG.bossName()');
+      check('三层 Boss 为深渊大骑士', d.boss && d.boss.tier === 3 && n3 === '深渊大骑士', 'tier=' + (d.boss && d.boss.tier) + ' name=' + n3);
+      await shot('snap_boss3.png');
     } else if (scenario === 'touch') {
       await ses('Page.navigate', { url: 'http://127.0.0.1:8123/index.html?auto=1&mobile=1' });
       for (let i = 0; i < 40; i++) { try { if ((await ev('document.readyState')) === 'complete') break; } catch (e) { } await sleep(200); }
