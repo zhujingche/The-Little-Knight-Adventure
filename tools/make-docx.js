@@ -78,6 +78,36 @@ const esc = (s) => String(s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
+// ---------- PNG 尺寸 / 图片段落 ----------
+function pngSize(buf) {
+  if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) {
+    return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+  }
+  return { w: 800, h: 600 };
+}
+const EMU_PER_PX = 9525;      // 96 DPI
+const MAX_W_EMU = 5600000;    // 页面正文可用宽度(A4 去页边距)
+function imagePara(rid, id, px) {
+  let cx = px.w * EMU_PER_PX, cy = px.h * EMU_PER_PX;
+  const k = Math.min(1, MAX_W_EMU / cx);
+  cx = Math.round(cx * k); cy = Math.round(cy * k);
+  const drawing = '<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"'
+    + ' xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">'
+    + '<wp:extent cx="' + cx + '" cy="' + cy + '"/>'
+    + '<wp:docPr id="' + id + '" name="Picture ' + id + '"/>'
+    + '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+    + '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+    + '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+    + '<pic:nvPicPr><pic:cNvPr id="' + id + '" name="image' + id + '.png"/><pic:cNvPicPr/></pic:nvPicPr>'
+    + '<pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="' + rid + '"/>'
+    + '<a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+    + '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm>'
+    + '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+    + '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>';
+  return '<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="120" w:after="120"/></w:pPr>'
+    + '<w:r>' + drawing + '</w:r></w:p>';
+}
+
 // ---------- 段落 ----------
 function para(text, opt = {}) {
   const sz = opt.size || 21;         // 半磅: 21 = 10.5pt
@@ -98,7 +128,7 @@ function para(text, opt = {}) {
   return '<w:p>' + ppr + '<w:r>' + rpr + '<w:t xml:space="preserve">' + esc(text) + '</w:t></w:r></w:p>';
 }
 
-function mdToBody(md) {
+function mdToBody(md, ctx) {
   const out = [];
   const lines = md.split(/\r?\n/);
   let inCode = false;
@@ -108,7 +138,22 @@ function mdToBody(md) {
     if (inCode) { out.push(para(line || ' ', { mono: true, size: 19, indent: 340, before: 0, after: 0 })); continue; }
     if (!line.trim()) { out.push(para(' ', { size: 12, before: 0, after: 0 })); continue; }
     let m;
-    if ((m = line.match(/^###\s+(.*)$/))) out.push(para(m[1], { bold: true, size: 24, before: 120 }));
+    if ((m = line.match(/^!\[(.*?)\]\((.+?)\)\s*$/))) {
+      // 真实图片: ![说明](相对或绝对路径) → 嵌入 docx
+      const rel = m[2].trim();
+      const abs = /^[A-Za-z]:[\\/]/.test(rel) ? rel : path.resolve(ctx.base, rel);
+      try {
+        const buf = fs.readFileSync(abs);
+        const px = pngSize(buf);
+        const id = ctx.imgs.length + 1;
+        ctx.imgs.push({ name: 'image' + id + '.png', buf });
+        out.push(imagePara('rIdImg' + id, id, px));
+        if (m[1]) out.push(para('图：' + m[1], { center: true, size: 18, before: 0, after: 140 }));
+      } catch (e) {
+        out.push(para('【图片缺失：' + rel + '】', { bold: true, color: 'B0261B', shade: 'F2F2F2', indent: 120 }));
+      }
+    }
+    else if ((m = line.match(/^###\s+(.*)$/))) out.push(para(m[1], { bold: true, size: 24, before: 120 }));
     else if ((m = line.match(/^##\s+(.*)$/))) out.push(para(m[1], { bold: true, size: 28, before: 180 }));
     else if ((m = line.match(/^#\s+(.*)$/))) out.push(para(m[1], { bold: true, size: 34, center: true, before: 120, after: 200 }));
     else if ((m = line.match(/^\[图[:：](.*)\]$/))) out.push(para('【此处插入截图：' + m[1] + '】', { bold: true, color: 'B0261B', shade: 'F2F2F2', indent: 120 }));
@@ -120,8 +165,9 @@ function mdToBody(md) {
   return out.join('');
 }
 
-function buildDocx(md) {
-  const body = mdToBody(md);
+function buildDocx(md, base) {
+  const ctx = { imgs: [], base: base || process.cwd() };
+  const body = mdToBody(md, ctx);
   const document = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
     + '<w:body>' + body
@@ -132,22 +178,33 @@ function buildDocx(md) {
     + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
     + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
     + '<Default Extension="xml" ContentType="application/xml"/>'
+    + (ctx.imgs.length ? '<Default Extension="png" ContentType="image/png"/>' : '')
     + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
     + '</Types>';
   const rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
     + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
     + '</Relationships>';
-  return makeZip([
+  const entries = [
     { name: '[Content_Types].xml', data: contentTypes },
     { name: '_rels/.rels', data: rels },
     { name: 'word/document.xml', data: document },
-  ]);
+  ];
+  if (ctx.imgs.length) {
+    const docRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + ctx.imgs.map((im, i) => '<Relationship Id="rIdImg' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/' + im.name + '"/>').join('')
+      + '</Relationships>';
+    entries.push({ name: 'word/_rels/document.xml.rels', data: docRels });
+    for (const im of ctx.imgs) entries.push({ name: 'word/media/' + im.name, data: im.buf });
+  }
+  return { zip: makeZip(entries), imgs: ctx.imgs.length };
 }
 
 const [, , inFile, outFile] = process.argv;
 if (!inFile || !outFile) { console.error('用法: node tools/make-docx.js <in.md> <out.docx>'); process.exit(1); }
 const md = fs.readFileSync(inFile, 'utf8');
 fs.mkdirSync(path.dirname(path.resolve(outFile)), { recursive: true });
-fs.writeFileSync(outFile, buildDocx(md));
-console.log('已生成 ' + outFile + ' (' + fs.statSync(outFile).size + ' 字节)');
+const built = buildDocx(md, path.dirname(path.resolve(inFile)));
+fs.writeFileSync(outFile, built.zip);
+console.log('已生成 ' + outFile + ' (' + fs.statSync(outFile).size + ' 字节, 嵌入图片 ' + built.imgs + ' 张)');
