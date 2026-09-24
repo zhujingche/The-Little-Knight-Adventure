@@ -128,15 +128,54 @@ function para(text, opt = {}) {
   return '<w:p>' + ppr + '<w:r>' + rpr + '<w:t xml:space="preserve">' + esc(text) + '</w:t></w:r></w:p>';
 }
 
+// ---------- 表格 ----------
+function tableXml(rows) {
+  const cols = Math.max(...rows.map(r => r.length));
+  const total = 9026;
+  const w = Math.floor(total / cols);
+  const borders = '<w:tblBorders>'
+    + '<w:top w:val="single" w:sz="6" w:color="808080"/><w:left w:val="single" w:sz="6" w:color="808080"/>'
+    + '<w:bottom w:val="single" w:sz="6" w:color="808080"/><w:right w:val="single" w:sz="6" w:color="808080"/>'
+    + '<w:insideH w:val="single" w:sz="6" w:color="808080"/><w:insideV w:val="single" w:sz="6" w:color="808080"/>'
+    + '</w:tblBorders>';
+  const trs = rows.map((cells, r) => {
+    const tcs = [];
+    for (let c = 0; c < cols; c++) {
+      const txt = String(cells[c] === undefined ? '' : cells[c]).replace(/\*\*/g, '');
+      tcs.push('<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>'
+        + (r === 0 ? '<w:shd w:val="clear" w:color="auto" w:fill="EDE7DA"/>' : '')
+        + '</w:tcPr><w:p><w:pPr><w:spacing w:before="20" w:after="20"/></w:pPr><w:r><w:rPr>'
+        + '<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="宋体"/>' + (r === 0 ? '<w:b/>' : '')
+        + '<w:sz w:val="19"/><w:szCs w:val="19"/></w:rPr><w:t xml:space="preserve">' + esc(txt) + '</w:t></w:r></w:p></w:tc>');
+    }
+    return '<w:tr>' + tcs.join('') + '</w:tr>';
+  }).join('');
+  return '<w:tbl><w:tblPr><w:tblW w:w="' + total + '" w:type="dxa"/>' + borders + '</w:tblPr>' + trs + '</w:tbl>'
+    + para(' ', { size: 12, before: 0, after: 0 });
+}
+const isTableRow = (l) => /^\s*\|.*\|\s*$/.test(l);
+const isTableSep = (l) => /^\s*\|[\s:|-]+\|\s*$/.test(l);
+const splitRow = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(s => s.trim());
+
 function mdToBody(md, ctx) {
   const out = [];
   const lines = md.split(/\r?\n/);
   let inCode = false;
-  for (const raw of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.replace(/\s+$/, '');
     if (/^```/.test(line)) { inCode = !inCode; continue; }
     if (inCode) { out.push(para(line || ' ', { mono: true, size: 19, indent: 340, before: 0, after: 0 })); continue; }
     if (!line.trim()) { out.push(para(' ', { size: 12, before: 0, after: 0 })); continue; }
+    // 表格: 连续的 | ... | 行(第二行为分隔行)
+    if (isTableRow(line) && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+      const rows = [splitRow(line)];
+      i += 2;
+      while (i < lines.length && isTableRow(lines[i])) { rows.push(splitRow(lines[i])); i++; }
+      i--;
+      out.push(tableXml(rows));
+      continue;
+    }
     let m;
     if ((m = line.match(/^!\[(.*?)\]\((.+?)\)\s*$/))) {
       // 真实图片: ![说明](相对或绝对路径) → 嵌入 docx
@@ -153,14 +192,14 @@ function mdToBody(md, ctx) {
         out.push(para('【图片缺失：' + rel + '】', { bold: true, color: 'B0261B', shade: 'F2F2F2', indent: 120 }));
       }
     }
-    else if ((m = line.match(/^###\s+(.*)$/))) out.push(para(m[1], { bold: true, size: 24, before: 120 }));
-    else if ((m = line.match(/^##\s+(.*)$/))) out.push(para(m[1], { bold: true, size: 28, before: 180 }));
-    else if ((m = line.match(/^#\s+(.*)$/))) out.push(para(m[1], { bold: true, size: 34, center: true, before: 120, after: 200 }));
+    else if ((m = line.match(/^###\s+(.*)$/))) out.push(para(m[1].replace(/\*\*/g, ''), { bold: true, size: 24, before: 120 }));
+    else if ((m = line.match(/^##\s+(.*)$/))) out.push(para(m[1].replace(/\*\*/g, ''), { bold: true, size: 28, before: 180 }));
+    else if ((m = line.match(/^#\s+(.*)$/))) out.push(para(m[1].replace(/\*\*/g, ''), { bold: true, size: 34, center: true, before: 120, after: 200 }));
     else if ((m = line.match(/^\[图[:：](.*)\]$/))) out.push(para('【此处插入截图：' + m[1] + '】', { bold: true, color: 'B0261B', shade: 'F2F2F2', indent: 120 }));
-    else if ((m = line.match(/^-\s+(.*)$/))) out.push(para('• ' + m[1], { indent: 300, before: 20, after: 20 }));
-    else if ((m = line.match(/^(\d+[.)])\s+(.*)$/))) out.push(para(m[1] + ' ' + m[2], { indent: 300, before: 20, after: 20 }));
-    else if (/^\s{2,}/.test(raw)) out.push(para(line.trim(), { indent: 300, before: 20, after: 20 }));
-    else out.push(para(line));
+    else if ((m = line.match(/^-\s+(.*)$/))) out.push(para('• ' + m[1].replace(/\*\*/g, ''), { indent: 300, before: 20, after: 20 }));
+    else if ((m = line.match(/^(\d+[.)])\s+(.*)$/))) out.push(para(m[1] + ' ' + m[2].replace(/\*\*/g, ''), { indent: 300, before: 20, after: 20 }));
+    else if (/^\s{2,}/.test(raw)) out.push(para(line.trim().replace(/\*\*/g, ''), { indent: 300, before: 20, after: 20 }));
+    else out.push(para(line.replace(/\*\*/g, '')));
   }
   return out.join('');
 }
